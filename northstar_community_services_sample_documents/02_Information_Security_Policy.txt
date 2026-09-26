@@ -1,0 +1,42 @@
+NORTHSTAR COMMUNITY SERVICES
+INFORMATION SECURITY POLICY
+
+Document Type: POLICY
+Document ID: NCS-POL-001
+Version: 1.0
+Effective Date: 1 January 2026
+Policy Owner: Director of Operations
+
+1. PURPOSE
+This policy establishes the basic information security requirements for Northstar Community Services and its personnel.
+
+2. SCOPE
+This policy applies to employees, contractors, volunteers, temporary workers, organizational devices, information systems, and information handled on behalf of the Organization.
+
+3. ACCESS CONTROL
+Access to organizational systems shall be granted according to job responsibilities. Users shall:
+- Use individual accounts where available.
+- Keep authentication credentials confidential.
+- Use multi-factor authentication when provided.
+- Request removal or modification of access when responsibilities change.
+
+4. INFORMATION HANDLING
+Confidential and sensitive information shall be stored and transmitted using approved organizational systems. Personnel shall not intentionally disclose protected information to unauthorized persons.
+
+5. DEVICES
+Organizational devices shall use reasonable security controls, including supported operating systems, screen locking, and approved security software.
+
+6. INCIDENT REPORTING
+Suspected unauthorized access, data loss, malware, or other security incidents shall be reported to the Operations Manager as soon as reasonably possible.
+
+7. THIRD-PARTY ACCESS
+Third parties shall receive only the access necessary to perform authorized services. Where appropriate, contractual confidentiality and security requirements shall be established.
+
+8. POLICY COMPLIANCE
+Personnel are expected to comply with this policy. Violations may result in corrective action in accordance with applicable organizational procedures.
+
+9. REVIEW
+The Policy Owner shall review this policy at least annually or following a significant security event or organizational change.
+
+Approved by: Executive Director
+Approval Date: 1 January 2026

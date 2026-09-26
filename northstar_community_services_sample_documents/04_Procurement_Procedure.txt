@@ -1,0 +1,44 @@
+NORTHSTAR COMMUNITY SERVICES
+PROCUREMENT PROCEDURE
+
+Document Type: PROCEDURE
+Document ID: NCS-PRO-001
+Version: 1.0
+Effective Date: 1 January 2026
+Process Owner: Procurement Manager
+
+1. PURPOSE
+This Procedure describes the steps staff must follow when acquiring goods or services on behalf of Northstar Community Services.
+
+2. STEP 1 - IDENTIFY THE REQUIREMENT
+The requesting department shall define the business need, required specifications, estimated cost, and desired delivery date.
+
+3. STEP 2 - OBTAIN APPROVAL
+The requester shall obtain the required budget and management approval before committing organizational funds.
+
+4. STEP 3 - IDENTIFY SUPPLIERS
+The Procurement Team shall identify suitable suppliers using approved supplier records, market research, or a competitive quotation process where required.
+
+5. STEP 4 - EVALUATE QUOTATIONS
+Quotations shall be evaluated against relevant criteria such as price, technical suitability, delivery time, service capability, and contractual terms.
+
+6. STEP 5 - SELECT SUPPLIER
+The authorized approver shall confirm the supplier selection and document the basis for the decision.
+
+7. STEP 6 - ISSUE PURCHASE DOCUMENT
+A purchase order or other approved purchasing document shall be issued before the supplier begins work, unless an approved exception applies.
+
+8. STEP 7 - RECEIVE AND VERIFY
+The requesting department shall verify that delivered goods or services meet the agreed requirements.
+
+9. STEP 8 - PAYMENT
+Invoices shall be checked against the purchase documentation and evidence of receipt before payment is authorized.
+
+10. RECORD KEEPING
+Procurement records shall be retained in the approved procurement repository.
+
+11. ESCALATION
+Unusual purchases, conflicts of interest, suspected supplier misconduct, or material deviations from approved requirements shall be escalated to the Procurement Manager.
+
+12. REVIEW
+This Procedure shall be reviewed annually or when the procurement process materially changes.

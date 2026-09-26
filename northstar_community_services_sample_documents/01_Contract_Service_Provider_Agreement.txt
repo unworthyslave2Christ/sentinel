@@ -1,0 +1,53 @@
+NORTHSTAR COMMUNITY SERVICES
+SERVICE PROVIDER AGREEMENT
+
+Document Type: CONTRACT
+Document ID: NCS-CON-001
+Effective Date: 1 January 2026
+Review Date: 1 January 2027
+
+PARTIES
+This Service Provider Agreement is between Northstar Community Services ("the Organization") and BrightPath Technology Solutions ("the Service Provider").
+
+1. PURPOSE
+The Organization engages the Service Provider to provide website maintenance, technical support, and routine system administration.
+
+2. SCOPE OF SERVICES
+The Service Provider shall:
+- Maintain the Organization's public website.
+- Provide technical support during agreed service hours.
+- Apply approved security and software updates.
+- Maintain appropriate records of support activities.
+- Notify the Organization promptly of significant service interruptions.
+
+3. TERM
+This Agreement begins on the Effective Date and remains in force for twelve months unless terminated earlier in accordance with this Agreement.
+
+4. FEES AND PAYMENT
+The Organization shall pay the Service Provider a monthly service fee of 250,000 fictional currency units. Approved additional work shall be agreed in writing before commencement.
+
+5. CONFIDENTIALITY
+Both parties shall protect confidential information received in connection with this Agreement and shall use such information only for legitimate business purposes.
+
+6. PERFORMANCE
+The Service Provider shall perform the services with reasonable care, skill, and professionalism.
+
+7. TERMINATION
+Either party may terminate this Agreement by providing thirty days' written notice. Immediate termination may occur where a material breach is not corrected within a reasonable period after written notice.
+
+8. GOVERNING LAW
+This fictional Agreement is governed by the laws selected by the parties in their final executed version.
+
+9. SIGNATURES
+
+For Northstar Community Services:
+Name: ______________________________
+Title: _______________________________
+Signature: ___________________________
+Date: ________________________________
+
+For BrightPath Technology Solutions:
+Name: ______________________________
+Title: _______________________________
+Signature: ___________________________
+Date: ________________________________
