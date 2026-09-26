@@ -1,9 +1,13 @@
 import { gateway } from "ai";
 
-const MODEL =
-  process.env.AI_MODEL ||
-  "mistral/mistral-small-latest";
+const DEFAULT_MODEL = "mistral/mistral-small-latest";
 
 export function getModel() {
-  return gateway(MODEL);
+  const modelId = process.env.AI_MODEL || DEFAULT_MODEL;
+
+  return gateway(modelId);
+}
+
+export function modelName() {
+  return process.env.AI_MODEL || DEFAULT_MODEL;
 }
