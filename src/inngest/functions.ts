@@ -164,7 +164,48 @@ export const runAudit = inngest.createFunction(
   {
     id: "sentinel-run-audit-v5",
     retries: 2,
+
     triggers: [{ event: "sentinel/audit.requested" }],
+
+    onFailure: async ({ event, error }) => {
+      const {
+        organizationId,
+        auditId,
+      } = event.data.event.data as {
+        organizationId: string;
+        auditId: string;
+        documentId: string;
+        documentIds?: string[];
+      };
+
+      const db = getAdminDb();
+
+      await auditRef(
+        db,
+        organizationId,
+        auditId,
+      ).update({
+        status: "FAILED",
+        progress: 35,
+        failureReason:
+          error instanceof Error
+            ? error.message
+            : String(error),
+        failedAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await auditEvent(
+        organizationId,
+        auditId,
+        {
+          type: "STATUS",
+          agent: "Audit Orchestrator",
+          message:
+            "Audit execution failed after retries. The audit can be retried.",
+        },
+      );
+    },
   },
   async ({ event, step }) => {
     const { organizationId, auditId, documentId } = event.data as {

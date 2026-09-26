@@ -1,1 +1,9 @@
-import {createMistral} from "@ai-sdk/mistral";import {createOpenAI} from "@ai-sdk/openai";export function getModel(){const p=process.env.AI_PROVIDER||"mistral";const n=process.env.AI_MODEL||"mistral-small-latest";return p==="openai"?createOpenAI({apiKey:process.env.OPENAI_API_KEY})(n):createMistral({apiKey:process.env.MISTRAL_API_KEY})(n)}
+import { gateway } from "ai";
+
+const MODEL =
+  process.env.AI_MODEL ||
+  "mistral/mistral-small-latest";
+
+export function getModel() {
+  return gateway(MODEL);
+}

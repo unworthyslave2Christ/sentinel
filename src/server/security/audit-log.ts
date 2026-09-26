@@ -14,7 +14,8 @@ export type SecurityAction =
   | "MEMBER_ROLE_CHANGED"
   | "MEMBER_ADDED"
   | "MEMBER_REMOVED"
-  | "REPORT_EXPORTED";
+  | "REPORT_EXPORTED"
+  | "AUDIT_RETRY_REQUESTED";
 
 export async function logSecurityEvent(
   member: CurrentMember,

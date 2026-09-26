@@ -37,6 +37,46 @@ export default function AuditLive({
 
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  const retryAudit = async () => {
+    try {
+      setRetrying(true);
+      setRetryError(null);
+
+      const response = await fetch(
+        "/api/audits/retry",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            auditId,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to retry audit",
+        );
+      }
+
+      await load();
+    } catch (error) {
+      setRetryError(
+        error instanceof Error
+          ? error.message
+          : "Failed to retry audit",
+      );
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -152,7 +192,13 @@ export default function AuditLive({
 
   const canStart =
     ["QUEUED", "READY", "DRAFT"].includes(a.status) &&
-    !starting;
+    !starting &&
+    !retrying;
+
+  const canRetry =
+    a.status === "FAILED" &&
+    !starting &&
+    !retrying;
 
   return (
     <div className="p-6 lg:p-10">
@@ -173,16 +219,25 @@ export default function AuditLive({
         </div>
 
         <div className="flex items-start gap-3">
-          {canStart && (
+          {canRetry ? (
+            <button
+              type="button"
+              onClick={retryAudit}
+              disabled={retrying}
+              className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {retrying ? "Retrying…" : "Retry Audit"}
+            </button>
+          ) : canStart ? (
             <button
               type="button"
               onClick={startAudit}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={starting}
+              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {starting ? "Starting…" : "Start Audit"}
             </button>
-          )}
+          ) : null}
 
           <div className="rounded-xl border bg-white p-5 text-right">
             <div className="text-xs text-slate-500">
@@ -205,6 +260,37 @@ export default function AuditLive({
           {startError}
         </div>
       )}
+
+      {a.status === "FAILED" && (
+      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="font-semibold text-amber-900">
+          Audit execution failed
+        </div>
+
+        <p className="mt-1 text-sm text-amber-800">
+          The workforce could not complete this audit.
+          You can retry it without creating a new audit.
+        </p>
+
+        {a.failureReason && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-amber-900">
+              Technical details
+            </summary>
+
+            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs text-slate-700">
+              {a.failureReason}
+            </pre>
+          </details>
+        )}
+      </div>
+    )}
+
+    {retryError && (
+      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {retryError}
+      </div>
+    )}
 
       <div className="mt-5 h-2 rounded bg-slate-200">
         <div
@@ -270,15 +356,17 @@ export default function AuditLive({
 
           {!f.length && (
             <div className="rounded-xl border bg-white p-6 text-sm text-slate-500">
-              {a.status === "QUEUED"
-                ? "The audit is queued and waiting to begin."
-                : a.status === "MAPPING"
-                  ? "The workforce is mapping the source to applicable controls."
-                  : a.status === "ANALYZING"
-                    ? "The workforce is analyzing the source and generating findings."
-                    : a.status === "REVIEW"
-                      ? "The audit completed without any findings requiring review."
-                      : "No findings have been generated yet."}
+              {a.status === "FAILED"
+                ? "The audit execution failed. Use Retry Audit to run the workforce again."
+                : a.status === "QUEUED"
+                  ? "The audit is queued and waiting to begin."
+                  : a.status === "MAPPING"
+                    ? "The workforce is mapping the source to applicable controls."
+                    : a.status === "ANALYZING"
+                      ? "The workforce is analyzing the source and generating findings."
+                      : a.status === "REVIEW"
+                        ? "The audit completed without any findings requiring review."
+                        : "No findings have been generated yet."}
             </div>
           )}
 
