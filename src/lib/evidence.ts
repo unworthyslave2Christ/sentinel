@@ -15,16 +15,43 @@ export type EvidenceRecord = {
   end?: number;
 };
 
-export async function persistEvidence(organizationId: string, auditId: string, findingId: string, evidence: Omit<EvidenceRecord, "id" | "findingId">[]) {
+function withoutUndefined<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, v]) => v !== undefined),
+  ) as T;
+}
+
+export async function persistEvidence(
+  organizationId: string,
+  auditId: string,
+  findingId: string,
+  items: any[],
+) {
   const db = getAdminDb();
-  const ref = evidenceRef(db, organizationId, auditId);
+
+  const ref = db.collection(
+    `organizations/${organizationId}/audits/${auditId}/evidence`,
+  );
+
   const batch = db.batch();
   const ids: string[] = [];
-  evidence.forEach((item, index) => {
+
+  items.forEach((item, index) => {
     const id = `${findingId}-e-${index}`;
     ids.push(id);
-    batch.set(ref.doc(id), { ...item, id, findingId, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+
+    const data = withoutUndefined({
+      ...item,
+      id,
+      findingId,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    batch.set(ref.doc(id), data, { merge: true });
   });
+
   await batch.commit();
+
   return ids;
 }

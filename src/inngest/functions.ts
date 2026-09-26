@@ -186,7 +186,6 @@ export const runAudit = inngest.createFunction(
         auditId,
       ).update({
         status: "FAILED",
-        progress: 35,
         failureReason:
           error instanceof Error
             ? error.message
@@ -481,20 +480,29 @@ export const runAudit = inngest.createFunction(
         });
 
         const evidenceItems = (finding.evidence || []).map(
-          (ev: any, j: number) => ({
-            id: evidenceIds[j],
-            documentId: ev.documentId,
-            page: ev.page,
-            section: ev.section,
-            text: ev.text,
-            reason: ev.reason,
-            chunkId: selected.find(
+          (ev: any, j: number) => {
+            const matchedChunk = selected.find(
               (c) =>
                 c.documentId === ev.documentId &&
+                typeof ev.text === "string" &&
                 c.text.includes(ev.text.slice(0, 80)),
-            )?.id,
-          }),
-        );
+            );
+
+            return {
+              id: evidenceIds[j],
+              documentId: ev.documentId,
+              ...(ev.page !== undefined ? { page: ev.page } : {}),
+              ...(ev.section !== undefined ? { section: ev.section } : {}),
+              text: ev.text,
+              reason: ev.reason,
+              ...(matchedChunk?.id
+                ? { chunkId: matchedChunk.id }
+                : {}),
+            };
+          },
+        )
+
+
         const persistedEvidenceIds = await persistEvidence(
           organizationId,
           auditId,
@@ -502,14 +510,14 @@ export const runAudit = inngest.createFunction(
           evidenceItems,
         );
         for (const ev of evidenceItems) {
-          graphNodes.push({
+            graphNodes.push({
             type: "evidence",
             label: ev.text.slice(0, 140),
             refId: ev.id,
             metadata: {
               documentId: ev.documentId,
-              page: ev.page,
-              section: ev.section,
+              ...(ev.page !== undefined ? { page: ev.page } : {}),
+              ...(ev.section !== undefined ? { section: ev.section } : {}),
               findingId: ref.id,
             },
           });
