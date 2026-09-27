@@ -110,7 +110,7 @@ export default function UploadForm({
         id="document-file"
         className="mt-2 w-full rounded border p-2"
         type="file"
-        accept=".pdf,.txt,application/pdf,text/plain"
+        accept=".txt,text/plain"
         onChange={(e) => pickFile(e.target.files?.[0] || null)}
       />
 
@@ -132,7 +132,7 @@ export default function UploadForm({
       )}
 
       <p className="mt-2 text-xs text-slate-500">
-        PDF and TXT up to 10MB. The source file is not stored in Firebase
+        TXT files up to 10MB. The source file is not stored in Firebase
         Storage; readable text is extracted and saved as Firestore chunks.
       </p>
 

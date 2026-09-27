@@ -1,13 +1,33 @@
-export type MonitorFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
+export type MonitorFrequency =
+  | "EVERY_2_MINUTES"
+  | "EVERY_5_MINUTES"
+  | "DAILY"
+  | "WEEKLY"
+  | "MONTHLY";
 
 export function nextRunAt(frequency: MonitorFrequency, from = new Date()) {
   const d = new Date(from);
-  if (frequency === "DAILY") d.setUTCDate(d.getUTCDate() + 1);
+
+  if (frequency === "EVERY_2_MINUTES") d.setUTCMinutes(d.getUTCMinutes() + 2);
+  else if (frequency === "EVERY_5_MINUTES") d.setUTCMinutes(d.getUTCMinutes() + 5);
+  else if (frequency === "DAILY") d.setUTCDate(d.getUTCDate() + 1);
   else if (frequency === "WEEKLY") d.setUTCDate(d.getUTCDate() + 7);
   else d.setUTCMonth(d.getUTCMonth() + 1);
+
   return d;
 }
 
 export function frequencyLabel(frequency: MonitorFrequency) {
-  return frequency === "DAILY" ? "Daily" : frequency === "WEEKLY" ? "Weekly" : "Monthly";
+  switch (frequency) {
+    case "EVERY_2_MINUTES":
+      return "Every 2 minutes";
+    case "EVERY_5_MINUTES":
+      return "Every 5 minutes";
+    case "DAILY":
+      return "Daily";
+    case "WEEKLY":
+      return "Weekly";
+    case "MONTHLY":
+      return "Monthly";
+  }
 }

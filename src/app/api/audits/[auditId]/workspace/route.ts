@@ -9,6 +9,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ auditId: s
     const db = getAdminDb();
     const audit = await db.doc(`organizations/${member.organizationId}/audits/${auditId}`).get();
     if (!audit.exists) return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+    const auditData = audit.data() || {};
+    const sourceDocumentId = String(auditData.documentId || "");
+    const sourceDocument = sourceDocumentId
+      ? await db.doc(`organizations/${member.organizationId}/documents/${sourceDocumentId}`).get()
+      : null;
+    const documentName = String(
+      auditData.documentName || sourceDocument?.data()?.name || "",
+    ).trim();
     const [findings, evidence, runs, events] = await Promise.all([
       audit.ref.collection("findings").orderBy("createdAt", "desc").get(),
       audit.ref.collection("evidence").orderBy("createdAt", "asc").get(),
@@ -16,7 +24,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ auditId: s
       audit.ref.collection("events").orderBy("createdAt", "desc").limit(100).get(),
     ]);
     return NextResponse.json({
-      audit: { id: audit.id, ...audit.data() },
+      audit: {
+        id: audit.id,
+        ...audit.data(),
+        ...(documentName ? { documentName } : {}),
+      },
       findings: findings.docs.map((d) => ({ id: d.id, ...d.data() })),
       evidence: evidence.docs.map((d) => ({ id: d.id, ...d.data() })),
       analysisRuns: runs.docs.map((d) => ({ id: d.id, ...d.data() })),

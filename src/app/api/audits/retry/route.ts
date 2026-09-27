@@ -96,6 +96,7 @@ export async function POST(request: Request) {
 
     await auditRef.update({
       status: "QUEUED",
+      documentName: String(documentSnap.data()?.name || "Source document"),
       progress: 0,
       riskScore: null,
       riskSeverity: null,

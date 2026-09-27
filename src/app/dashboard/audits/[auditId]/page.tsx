@@ -18,6 +18,14 @@ export default async function Audit({
   const db = getAdminDb();
   const a = await db.doc(`organizations/${org}/audits/${auditId}`).get();
   if (!a.exists) notFound();
+  const auditData = a.data() || {};
+  const sourceDocumentId = String(auditData.documentId || "");
+  const sourceDocument = sourceDocumentId
+    ? await db.doc(`organizations/${org}/documents/${sourceDocumentId}`).get()
+    : null;
+  const documentName = String(
+    auditData.documentName || sourceDocument?.data()?.name || "",
+  ).trim();
   const [f, evidence, runs, events] = await Promise.all([
     a.ref.collection("findings").orderBy("createdAt", "desc").get(),
     a.ref.collection("evidence").orderBy("createdAt", "asc").get(),
@@ -35,6 +43,7 @@ export default async function Audit({
       initialAudit={serializeFirestore({
         id: a.id,
         ...a.data(),
+        ...(documentName ? { documentName } : {}),
       })}
       initialFindings={serializeFirestore(
         f.docs.map((x) => ({

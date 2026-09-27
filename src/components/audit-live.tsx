@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ReloadButton from "@/components/reload-button";
 
 type Workspace = {
   audit: any;
@@ -218,9 +219,15 @@ export default function AuditLive({
             {a.status} · {a.progress || 0}% · schema{" "}
             {a.schemaVersion || "legacy"}
           </p>
+
+          <p className="mt-1 text-sm text-slate-600">
+            Source document: {a.documentName || a.sourceDocumentName || "Source document"}
+          </p>
         </div>
 
         <div className="flex items-start gap-3">
+          <ReloadButton />
+
           <button
             type="button"
             onClick={retryAudit}
@@ -389,6 +396,10 @@ export default function AuditLive({
                   </h2>
 
                   <div className="mt-1 text-xs text-slate-500">
+                    Source document: {x.sourceDocumentName || a.documentName || "Source document"}
+                  </div>
+
+                  <div className="mt-1 text-xs text-slate-500">
                     {x.category} ·{" "}
                     {Math.round(
                       Number(x.confidence || 0) * 100,
@@ -419,7 +430,8 @@ export default function AuditLive({
                       </blockquote>
 
                       <p className="mt-1 pl-3 text-xs text-slate-500">
-                        {z.reason}
+                        {z.documentName ? `Source document: ${z.documentName}` : "Source document"}
+                        {z.reason ? ` · ${z.reason}` : ""}
                         {z.section
                           ? ` · ${z.section}`
                           : ""}

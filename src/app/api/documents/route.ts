@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     if (!TYPES.includes(type as (typeof TYPES)[number])) return NextResponse.json({ error: "Invalid document type" }, { status: 400 });
     if (!file.name || file.name.length > MAX_NAME_LENGTH) return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     if (!name || name.length > MAX_NAME_LENGTH) return NextResponse.json({ error: "Document name is required and must be 180 characters or fewer" }, { status: 400 });
-    if (!["application/pdf", "text/plain"].includes(file.type)) return NextResponse.json({ error: "MVP supports PDF and TXT" }, { status: 400 });
+    if (file.type !== "text/plain") return NextResponse.json({ error: "Only TXT files are supported" }, { status: 400 });
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "Maximum 10MB" }, { status: 400 });
 
     const bytes = Buffer.from(await file.arrayBuffer());
@@ -148,6 +148,7 @@ export async function POST(req: Request) {
 
     await audit.set({
       title: `${name} — Initial audit`,
+      documentName: name,
       documentId: doc.id,
       documentIds: [doc.id],
       status: "QUEUED",

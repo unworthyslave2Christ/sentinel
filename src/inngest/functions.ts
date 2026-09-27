@@ -103,6 +103,7 @@ async function queueAudit(
   const now = new Date();
   await audit.set({
     title: `${d.name || "Document"} — ${reason}`,
+    documentName: String(d.name || "Document"),
     documentId,
     documentIds: [documentId],
     status: "QUEUED",
@@ -441,6 +442,15 @@ export const runAudit = inngest.createFunction(
         const evidenceIds = (finding.evidence || []).map(
           (_: any, j: number) => `${ref.id}-e-${j}`,
         );
+        const sourceDocumentIds = [
+          ...new Set((finding.evidence || []).map((e: any) => String(e.documentId))),
+        ];
+        const sourceDocumentNames = sourceDocumentIds.map(
+          (id) => docs.find((doc) => doc.id === id)?.name,
+        ).filter((name): name is string => Boolean(name));
+        const sourceDocumentName = sourceDocumentNames.length === 1
+          ? sourceDocumentNames[0]
+          : sourceDocumentNames.join(", ");
         const data = {
           ...finding,
           status: "OPEN",
@@ -451,9 +461,9 @@ export const runAudit = inngest.createFunction(
           analysisRunId: compliance.runId,
           riskAnalysisRunId: risk.runId,
           remediationAnalysisRunId: remediation.runId,
-          sourceDocumentIds: [
-            ...new Set((finding.evidence || []).map((e: any) => e.documentId)),
-          ],
+          sourceDocumentIds,
+          sourceDocumentNames,
+          sourceDocumentName,
           trace: {
             auditId,
             controlIds: finding.controlIds || [],
@@ -491,6 +501,7 @@ export const runAudit = inngest.createFunction(
             return {
               id: evidenceIds[j],
               documentId: ev.documentId,
+              documentName: docs.find((doc) => doc.id === ev.documentId)?.name || sourceDocumentName || "Source document",
               ...(ev.page !== undefined ? { page: ev.page } : {}),
               ...(ev.section !== undefined ? { section: ev.section } : {}),
               text: ev.text,
@@ -618,7 +629,7 @@ export const monitorSchedules = inngest.createFunction(
   {
     id: "sentinel-monitor-schedules-v5",
     retries: 1,
-    triggers: [{ cron: "*/15 * * * *" }],
+    triggers: [{ cron: "* * * * *" }],
   },
   async ({ step }) => {
     const db = getAdminDb();

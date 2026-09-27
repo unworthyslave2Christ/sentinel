@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     // Update the DOCUMENT REFERENCE, not the snapshot.
     await auditRef.update({
       status: "QUEUED",
+      documentName: String(documentSnap.data()?.name || "Source document"),
       updatedAt: new Date(),
     });
 

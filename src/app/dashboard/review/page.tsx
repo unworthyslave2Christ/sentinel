@@ -3,4 +3,93 @@ import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
 import ReviewControls from "@/components/review-controls";
 
-export default async function Review(){const s=await getCurrentSession();if(!s?.user?.id)return null;const org=await ensureOrganization(s.user.id,s.user.email);const audits=await getAdminDb().collection(`organizations/${org}/audits`).orderBy("createdAt","desc").limit(50).get();const rows:any[]=[];for(const a of audits.docs){const fs=await a.ref.collection("findings").where("status","in",["OPEN","IN_REVIEW"]).get();fs.docs.forEach(f=>rows.push({id:f.id,auditId:a.id,title:String(f.data().title),severity:String(f.data().severity),status:String(f.data().status),evidence:f.data().evidence?.[0]?.text||""}));}return <div className="p-6 lg:p-10"><div className="text-sm font-semibold text-blue-600">Governance</div><h1 className="mt-1 text-3xl font-semibold">Human review queue</h1><p className="mt-2 text-slate-500">Every material finding remains reviewable before it is accepted, dismissed, or resolved.</p><div className="mt-8 space-y-4">{!rows.length&&<div className="rounded-xl border bg-white p-6 text-sm text-slate-500">Nothing awaiting review.</div>}{rows.map(x=><div key={`${x.auditId}-${x.id}`} className="rounded-xl border bg-white p-5"><div className="flex justify-between gap-4"><div><h2 className="font-semibold">{x.title}</h2><div className="mt-1 text-xs text-slate-500">{x.severity} · audit {x.auditId}</div></div><ReviewControls id={x.id} auditId={x.auditId} initial={x.status}/></div><p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{x.evidence}</p></div>)}</div></div>}
+export default async function Review() {
+  const s = await getCurrentSession();
+  if (!s?.user?.id) return null;
+
+  const org = await ensureOrganization(s.user.id, s.user.email);
+  const db = getAdminDb();
+  const audits = await db
+    .collection(`organizations/${org}/audits`)
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get();
+
+  const rows: any[] = [];
+
+  for (const audit of audits.docs) {
+    const auditData = audit.data();
+    let documentName = String(auditData.documentName || "").trim();
+
+    if (!documentName && auditData.documentId) {
+      const document = await db
+        .doc(`organizations/${org}/documents/${String(auditData.documentId)}`)
+        .get();
+      if (document.exists) documentName = String(document.data()?.name || "").trim();
+    }
+
+    const fs = await audit.ref
+      .collection("findings")
+      .where("status", "in", ["OPEN", "IN_REVIEW"])
+      .get();
+
+    fs.docs.forEach((f) => {
+      const finding = f.data();
+      rows.push({
+        id: f.id,
+        auditId: audit.id,
+        title: String(finding.title),
+        severity: String(finding.severity),
+        status: String(finding.status),
+        documentName:
+          String(finding.sourceDocumentName || "").trim() ||
+          documentName ||
+          "Source document",
+        evidence: finding.evidence?.[0]?.text || "",
+      });
+    });
+  }
+
+  return (
+    <div className="p-6 lg:p-10">
+      <div className="text-sm font-semibold text-blue-600">Governance</div>
+      <h1 className="mt-1 text-3xl font-semibold">Human review queue</h1>
+      <p className="mt-2 text-slate-500">
+        Every material finding remains reviewable before it is accepted, dismissed, or resolved.
+      </p>
+
+      <div className="mt-8 space-y-4">
+        {!rows.length && (
+          <div className="rounded-xl border bg-white p-6 text-sm text-slate-500">
+            Nothing awaiting review.
+          </div>
+        )}
+
+        {rows.map((x) => (
+          <div
+            key={`${x.auditId}-${x.id}`}
+            className="rounded-xl border bg-white p-5"
+          >
+            <div className="flex justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">{x.title}</h2>
+                <div className="mt-1 text-xs text-slate-500">
+                  {x.severity} · source document: {x.documentName}
+                </div>
+              </div>
+              <ReviewControls
+                id={x.id}
+                auditId={x.auditId}
+                initial={x.status}
+              />
+            </div>
+
+            <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+              {x.evidence}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

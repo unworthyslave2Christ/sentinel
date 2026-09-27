@@ -15,7 +15,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json();
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof body.active === "boolean") patch.active = body.active;
-  if (["DAILY", "WEEKLY", "MONTHLY"].includes(String(body.frequency))) {
+  if (["EVERY_2_MINUTES", "EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"].includes(String(body.frequency))) {
     const frequency = String(body.frequency) as MonitorFrequency;
     patch.frequency = frequency;
     patch.nextRunAt = nextRunAt(frequency, new Date());
