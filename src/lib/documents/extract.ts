@@ -1,15 +1,14 @@
-// Replace this:
-// import pdf from "pdf-parse";
-
-// With this:
-import * as pdf from "pdf-parse"; 
-
+// 1. Import it as a namespace module so Turbopack accepts it
+import * as pdf from "pdf-parse";
 
 export async function extractText(buffer: Buffer, mime: string) {
   if (mime === "text/plain") return buffer.toString("utf8");
 
   if (mime === "application/pdf") {
-    const result = await pdf(buffer);
+    // 2. Cast the namespace object to "any" or "unknown" to allow execution
+    const parsePdf = (pdf as any).default || pdf;
+    const result = await parsePdf(buffer);
+    
     return result.text || "";
   }
 
