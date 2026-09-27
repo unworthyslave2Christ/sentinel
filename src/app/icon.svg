@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Sentinel</title>
+  <path fill="#0f172a" d="M32 4 56 12v18c0 15.5-10.4 25.2-24 30C18.4 55.2 8 45.5 8 30V12z"/>
+  <path fill="#fff" d="m32 14 14 4.7V30c0 10.1-6 17.3-14 21.1C24 47.3 18 40.1 18 30V18.7z"/>
+  <path fill="#2563eb" d="M29 22h6v12h-6z"/>
+  <circle cx="32" cy="40" r="3" fill="#2563eb"/>
+</svg>

@@ -48,6 +48,45 @@ async function writeChunks(db: ReturnType<typeof getAdminDb>, path: string, chun
   }
 }
 
+
+export async function GET() {
+  let member;
+  try {
+    member = await requirePermission("VIEW");
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "UNAUTHENTICATED";
+
+    return NextResponse.json(
+      { error: message === "FORBIDDEN" ? "Forbidden" : "Unauthorized" },
+      { status: message === "FORBIDDEN" ? 403 : 401 },
+    );
+  }
+
+  const db = getAdminDb();
+  const snap = await db
+    .collection(`organizations/${member.organizationId}/documents`)
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
+
+  return NextResponse.json(
+    snap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: String(data.name || ""),
+        originalFilename: String(data.originalFilename || ""),
+        type: String(data.type || "OTHER"),
+        textLength: Number(data.textLength || 0),
+        chunkCount: Number(data.chunkCount || 0),
+        status: String(data.status || "UNKNOWN"),
+      };
+    }),
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 export async function POST(req: Request) {
   let member;
   try {

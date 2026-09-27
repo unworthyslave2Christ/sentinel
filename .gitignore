@@ -9,3 +9,6 @@ node_modules
 auth.sqlite
 auth.sqlite-shm
 auth.sqlite-wal
+
+src_2
+archive*

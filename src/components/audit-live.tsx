@@ -195,10 +195,12 @@ export default function AuditLive({
     !starting &&
     !retrying;
 
-  const canRetry =
-    a.status === "FAILED" &&
-    !starting &&
-    !retrying;
+  // Keep Retry Audit visible for every audit. It becomes actionable only
+  // after the current execution has reached FAILED; retry never pre-empts a
+  // running background job.
+  const retryAvailable = a.status === "FAILED";
+  const retryDisabled =
+    !retryAvailable || starting || retrying;
 
   return (
     <div className="p-6 lg:p-10">
@@ -219,16 +221,21 @@ export default function AuditLive({
         </div>
 
         <div className="flex items-start gap-3">
-          {canRetry ? (
-            <button
-              type="button"
-              onClick={retryAudit}
-              disabled={retrying}
-              className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {retrying ? "Retrying…" : "Retry Audit"}
-            </button>
-          ) : canStart ? (
+          <button
+            type="button"
+            onClick={retryAudit}
+            disabled={retryDisabled}
+            title={
+              retryAvailable
+                ? "Clear the failed execution traces and queue a fresh audit run."
+                : "Retry becomes available after the audit reaches FAILED."
+            }
+            className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {retrying ? "Retrying…" : "Retry Audit"}
+          </button>
+
+          {canStart ? (
             <button
               type="button"
               onClick={startAudit}
