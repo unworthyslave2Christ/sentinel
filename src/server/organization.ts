@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/server/firebase/admin";
+import type { QuerySnapshot } from "firebase-admin/firestore";
 
 function normalizeEmail(email?: string | null) {
   return email?.trim().toLowerCase() || null;
@@ -115,13 +116,23 @@ export async function ensureOrganization(
 
     // Also honor an existing invitation for this email. The authenticated
     // user receives a canonical membership under their actual user ID.
-    const invited = await db
-      .collectionGroup("members")
-      .where("email", "==", normalizedEmail)
-      .limit(1)
-      .get();
+    let invited: QuerySnapshot | null = null;
+    try {
+      invited = await db
+        .collectionGroup("members")
+        .where("email", "==", normalizedEmail)
+        .limit(1)
+        .get();
+    } catch (error) {
+      // The collection-group index may still be building after deployment.
+      // Invitation recovery is optional here; an index-building failure must
+      // never prevent a valid authenticated owner from entering Sentinel.
+      const code = (error as { code?: number | string }).code;
+      if (code !== 9 && code !== "9" && code !== "FAILED_PRECONDITION") throw error;
+      invited = null;
+    }
 
-    if (!invited.empty) {
+    if (invited && !invited.empty) {
       const invitedMember = invited.docs[0];
       const organizationId = invitedMember.ref.parent.parent?.id;
 

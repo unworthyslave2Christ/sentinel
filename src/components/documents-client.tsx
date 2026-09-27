@@ -24,8 +24,8 @@ export default function DocumentsClient({
     <div className="p-6 lg:p-10">
       <h1 className="text-3xl font-semibold">Documents</h1>
       <p className="mt-2 max-w-2xl text-slate-500">
-        Upload a PDF or TXT source. Sentinel extracts readable text and stores
-        it as Firestore chunks, so the current ingestion path does not require
+        Upload a PDF or TXT source. Sentinel extracts readable text from both formats and stores
+        the extracted content as Firestore chunks, so the ingestion path does not require
         Firebase Storage for document persistence.
       </p>
 

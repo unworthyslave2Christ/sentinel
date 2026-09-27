@@ -142,7 +142,7 @@ export default function UploadForm({
         onClick={go}
         className="mt-5 rounded-lg bg-slate-950 px-4 py-3 text-sm text-white disabled:opacity-40"
       >
-        {busy ? "Processing document…" : "Save text and start audit"}
+        {busy ? "Processing document…" : "Save document and start audit"}
       </button>
 
       {m && (
