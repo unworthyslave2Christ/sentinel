@@ -1,4 +1,9 @@
-import pdf from "pdf-parse";
+// Replace this:
+// import pdf from "pdf-parse";
+
+// With this:
+import * as pdf from "pdf-parse"; 
+
 
 export async function extractText(buffer: Buffer, mime: string) {
   if (mime === "text/plain") return buffer.toString("utf8");
