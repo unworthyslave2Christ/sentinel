@@ -220,6 +220,11 @@ export default function AuditLive({
   const retryDisabled =
     !retryAvailable || starting || retrying;
 
+  const displaySessionNumber = Number(a.scheduleSessionNumber || (a.scheduleSessionId ? 1 : 0));
+  const displayTitle = displaySessionNumber > 0 && a.documentName
+    ? `${a.documentName} — Monitoring session ${displaySessionNumber}`
+    : a.title;
+
   return (
     <div className="p-6 lg:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -229,7 +234,7 @@ export default function AuditLive({
           </div>
 
           <h1 className="mt-1 text-3xl font-semibold">
-            {a.title}
+            {displayTitle}
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">

@@ -14,9 +14,12 @@ export default async function Findings() {
     const fs = await audit.ref.collection("findings").orderBy("createdAt", "desc").get();
     for (const f of fs.docs) {
       const x = f.data();
+      const sessionNumber = Number(x.scheduleSessionNumber || auditData.scheduleSessionNumber || (auditData.scheduleSessionId ? 1 : 0));
+      const docName = String(x.sourceDocumentName || auditData.documentName || "Source document");
+      const auditTitle = sessionNumber > 0 ? `${docName} — Monitoring session ${sessionNumber}` : String(auditData.title || "Audit");
       rows.push({
-        id: f.id, auditId: audit.id, auditTitle: String(auditData.title || "Audit"),
-        documentName: String(x.sourceDocumentName || auditData.documentName || "Source document"),
+        id: f.id, auditId: audit.id, auditTitle,
+        documentName: docName,
         title: String(x.title || "Untitled finding"), severity: String(x.severity || "LOW"),
         category: String(x.category || "OTHER"), status: String(x.status || "OPEN"),
         confidence: Number(x.confidence || 0), scheduleSessionId: x.scheduleSessionId || null,

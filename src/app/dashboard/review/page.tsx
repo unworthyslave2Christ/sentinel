@@ -22,8 +22,11 @@ export default async function Review() {
       const finding = f.data();
       const status = String(finding.status || "OPEN");
       if (!["OPEN", "IN_REVIEW"].includes(status)) return;
+      const sessionNumber = Number(finding.scheduleSessionNumber || auditData.scheduleSessionNumber || (auditData.scheduleSessionId ? 1 : 0));
+      const displayDocumentName = String(finding.sourceDocumentName || "").trim() || documentName || "Source document";
+      const auditTitle = sessionNumber > 0 ? `${displayDocumentName} — Monitoring session ${sessionNumber}` : String(auditData.title || "Audit");
       rows.push({
-        id: f.id, auditId: audit.id, auditTitle: String(auditData.title || "Audit"),
+        id: f.id, auditId: audit.id, auditTitle,
         title: String(finding.title || "Untitled finding"), severity: String(finding.severity || "LOW"), status,
         documentName: String(finding.sourceDocumentName || "").trim() || documentName || "Source document",
         evidence: finding.evidence?.[0]?.text || "", category: String(finding.category || "OTHER"),

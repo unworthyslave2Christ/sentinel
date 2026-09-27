@@ -43,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           status: "QUEUED", progress: 0, findingCount: 0,
           scheduleId: id, scheduleSessionId, scheduleSessionNumber: sessionNumber,
           scheduleFrequency: nextFrequency, scheduleRunAt: now,
+          title: `${String(previous.documentName || "Document")} — Monitoring session ${sessionNumber}`,
           trigger: `Scheduled ${String(nextFrequency).toLowerCase()} monitoring`,
           updatedAt: now, completedAt: null, failureReason: null,
         });

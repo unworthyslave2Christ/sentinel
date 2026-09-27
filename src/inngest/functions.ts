@@ -121,7 +121,9 @@ async function queueAudit(
 
   await audit.set({
     ...(previous || {}),
-    title: `${d.name || "Document"} — ${reason}`,
+    title: schedule
+      ? `${d.name || "Document"} — Monitoring session ${sessionNumber}`
+      : `${d.name || "Document"} — ${reason}`,
     documentName: String(d.name || "Document"),
     documentId,
     documentIds: [documentId],
