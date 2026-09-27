@@ -8,12 +8,15 @@ import { serializeFirestore } from "@/lib/serialize-firestore";
 
 export default async function Audit({
   params,
+  searchParams,
 }: {
   params: Promise<{ auditId: string }>;
+  searchParams: Promise<{ runCurrentSchedule?: string }>;
 }) {
   const s = await getCurrentSession();
   if (!s?.user?.id) return null;
   const { auditId } = await params;
+  const { runCurrentSchedule } = await searchParams;
   const org = await ensureOrganization(s.user.id, s.user.email);
   const db = getAdminDb();
   const a = await db.doc(`organizations/${org}/audits/${auditId}`).get();
@@ -69,6 +72,7 @@ export default async function Audit({
           ...x.data(),
         })),
       )}
+      autoRunCurrentSchedule={runCurrentSchedule === "1"}
     />
 );
 }

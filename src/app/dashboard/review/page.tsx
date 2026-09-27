@@ -46,9 +46,14 @@ export default async function Review() {
           documentName ||
           "Source document",
         evidence: finding.evidence?.[0]?.text || "",
+        scheduleSessionId: finding.scheduleSessionId ? String(finding.scheduleSessionId) : null,
+        createdAt: finding.createdAt?.toDate?.()?.getTime?.() || 0,
+        auditCreatedAt: auditData.createdAt?.toDate?.()?.getTime?.() || 0,
       });
     });
   }
+
+  rows.sort((a, b) => b.auditCreatedAt - a.auditCreatedAt || b.createdAt - a.createdAt);
 
   return (
     <div className="p-6 lg:p-10">
@@ -74,7 +79,7 @@ export default async function Review() {
               <div>
                 <h2 className="font-semibold">{x.title}</h2>
                 <div className="mt-1 text-xs text-slate-500">
-                  {x.severity} · source document: {x.documentName}
+                  {x.severity} · source document: {x.documentName}{x.scheduleSessionId ? ` · session ${x.scheduleSessionId}` : ""}
                 </div>
               </div>
               <ReviewControls

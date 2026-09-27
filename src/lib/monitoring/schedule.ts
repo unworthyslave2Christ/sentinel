@@ -1,5 +1,4 @@
 export type MonitorFrequency =
-  | "EVERY_2_MINUTES"
   | "EVERY_5_MINUTES"
   | "DAILY"
   | "WEEKLY"
@@ -8,8 +7,7 @@ export type MonitorFrequency =
 export function nextRunAt(frequency: MonitorFrequency, from = new Date()) {
   const d = new Date(from);
 
-  if (frequency === "EVERY_2_MINUTES") d.setUTCMinutes(d.getUTCMinutes() + 2);
-  else if (frequency === "EVERY_5_MINUTES") d.setUTCMinutes(d.getUTCMinutes() + 5);
+  if (frequency === "EVERY_5_MINUTES") d.setUTCMinutes(d.getUTCMinutes() + 5);
   else if (frequency === "DAILY") d.setUTCDate(d.getUTCDate() + 1);
   else if (frequency === "WEEKLY") d.setUTCDate(d.getUTCDate() + 7);
   else d.setUTCMonth(d.getUTCMonth() + 1);
@@ -19,8 +17,6 @@ export function nextRunAt(frequency: MonitorFrequency, from = new Date()) {
 
 export function frequencyLabel(frequency: MonitorFrequency) {
   switch (frequency) {
-    case "EVERY_2_MINUTES":
-      return "Every 2 minutes";
     case "EVERY_5_MINUTES":
       return "Every 5 minutes";
     case "DAILY":

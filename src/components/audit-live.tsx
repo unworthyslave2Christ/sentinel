@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ReloadButton from "@/components/reload-button";
 
 type Workspace = {
@@ -19,6 +20,7 @@ export default function AuditLive({
   initialEvidence = [],
   initialRuns = [],
   initialEvents = [],
+  autoRunCurrentSchedule = false,
 }: {
   organizationId: string;
   auditId: string;
@@ -27,7 +29,9 @@ export default function AuditLive({
   initialEvidence?: any[];
   initialRuns?: any[];
   initialEvents?: any[];
+  autoRunCurrentSchedule?: boolean;
 }) {
+  const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace>({
     audit: initialAudit,
     findings: initialFindings,
@@ -39,6 +43,9 @@ export default function AuditLive({
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [runningSchedule, setRunningSchedule] = useState(false);
+  const [scheduleRunError, setScheduleRunError] = useState<string | null>(null);
+  const autoRunStarted = useRef(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
   const retryAudit = async () => {
@@ -78,6 +85,30 @@ export default function AuditLive({
       setRetrying(false);
     }
   };
+
+  const runCurrentSchedule = async () => {
+    try {
+      setRunningSchedule(true);
+      setScheduleRunError(null);
+      const response = await fetch(`/api/audits/${auditId}/schedule-run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to run the current schedule");
+      if (data.auditId) router.push(`/dashboard/audits/${data.auditId}`);
+    } catch (error) {
+      setScheduleRunError(error instanceof Error ? error.message : "Failed to run the current schedule");
+    } finally {
+      setRunningSchedule(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!autoRunCurrentSchedule || autoRunStarted.current || !initialAudit?.scheduleId) return;
+    autoRunStarted.current = true;
+    void runCurrentSchedule();
+  }, [autoRunCurrentSchedule, auditId, initialAudit?.scheduleId]);
 
   const load = useCallback(async () => {
     try {
@@ -223,6 +254,21 @@ export default function AuditLive({
           <p className="mt-1 text-sm text-slate-600">
             Source document: {a.documentName || a.sourceDocumentName || "Source document"}
           </p>
+
+          {a.scheduleId && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="rounded-full border px-2 py-1">
+                Schedule session: {a.scheduleSessionId || "current"}
+              </span>
+              <span>
+                {a.scheduleFrequency ? String(a.scheduleFrequency).replaceAll("_", " ").toLowerCase() : "Scheduled monitoring"}
+              </span>
+              {a.scheduleNextRunAt && (
+                <span>next run {new Date(a.scheduleNextRunAt).toLocaleString()}</span>
+              )}
+              <span className="text-emerald-700">● Live · auto-updating</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-start gap-3">
@@ -241,6 +287,18 @@ export default function AuditLive({
           >
             {retrying ? "Retrying…" : "Retry Audit"}
           </button>
+
+          {a.scheduleId && a.scheduleActive !== false ? (
+            <button
+              type="button"
+              onClick={runCurrentSchedule}
+              disabled={runningSchedule || starting || retrying}
+              title="Start a fresh audit session using the current monitoring schedule."
+              className="rounded-xl border bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {runningSchedule ? "Starting schedule…" : "Run Current Schedule"}
+            </button>
+          ) : null}
 
           {canStart ? (
             <button
@@ -272,6 +330,12 @@ export default function AuditLive({
       {startError && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {startError}
+        </div>
+      )}
+
+      {scheduleRunError && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {scheduleRunError}
         </div>
       )}
 

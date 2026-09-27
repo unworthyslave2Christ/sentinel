@@ -4,7 +4,7 @@ import { logSecurityEvent } from "@/server/security/audit-log";
 import { getAdminDb } from "@/server/firebase/admin";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
 
-const frequencies = ["EVERY_2_MINUTES", "EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"] as const;
+const frequencies = ["EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"] as const;
 
 export async function GET() {
   let member;
