@@ -246,7 +246,15 @@ export const runAudit = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { organizationId, auditId, documentId } = event.data as {
+    const {
+      organizationId,
+      auditId,
+      documentId,
+      scheduleId,
+      scheduleSessionId,
+      scheduleFrequency,
+      scheduleRunAt,
+    } = event.data as {
       organizationId: string;
       auditId: string;
       documentId: string;
