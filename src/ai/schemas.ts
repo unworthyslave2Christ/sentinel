@@ -29,5 +29,5 @@ export const riskAssessmentSchema = z.object({
 });
 
 export const remediationSchema = z.object({
-  actions: z.array(z.object({ title: z.string(), description: z.string(), priority: z.enum(["LOW","MEDIUM","HIGH","URGENT"]), dueInDays: z.number().int().min(1).max(365) })).default([]),
+  actions: z.array(z.object({ title: z.string(), description: z.string(), priority: z.enum(["LOW","MEDIUM","HIGH","URGENT"]), dueInDays: z.number().int().min(5).max(50) })).default([]),
 });

@@ -17,9 +17,9 @@ import {
 } from "@/server/data/analysis-runs";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
 import { auditRef, documentsRef } from "@/server/data/model";
-import { queueAudit } from "@/server/data/monitoring";
 
 const weights = { LOW: 20, MEDIUM: 45, HIGH: 75, CRITICAL: 95 } as const;
+const ACTIVE_AUDIT_STATUSES = ["QUEUED", "EXTRACTING", "MAPPING", "ANALYZING"];
 const PROMPT_VERSIONS = {
   controls: "control-mapping-v5.1",
   compliance: "compliance-v5.1",
@@ -80,6 +80,97 @@ async function loadOrganizationDocuments(
   return records;
 }
 
+async function queueAudit(
+  db: any,
+  organizationId: string,
+  documentId: string,
+  createdBy: string,
+  reason: string,
+  schedule?: { id: string; frequency: MonitorFrequency; runAt: Date; sessionId: string },
+) {
+  const document = await db.doc(`organizations/${organizationId}/documents/${documentId}`).get();
+  if (!document.exists) return null;
+  const d = document.data() || {};
+
+  const existing = await db
+    .collection(`organizations/${organizationId}/audits`)
+    .where("documentId", "==", documentId)
+    .where("status", "in", ACTIVE_AUDIT_STATUSES)
+    .limit(1)
+    .get();
+  if (!existing.empty) return existing.docs[0].id;
+
+  let audit: any = null;
+  if (schedule?.id) {
+    const scheduled = await db
+      .collection(`organizations/${organizationId}/audits`)
+      .where("documentId", "==", documentId)
+      .limit(50)
+      .get();
+    if (!scheduled.empty) {
+      const latest = scheduled.docs.sort((a: any, b: any) => Number(b.data().createdAt?.toMillis?.() || 0) - Number(a.data().createdAt?.toMillis?.() || 0))[0];
+      audit = latest.ref;
+    }
+  }
+
+  audit ||= db.collection(`organizations/${organizationId}/audits`).doc();
+  const now = new Date();
+  const sessionId = schedule?.sessionId || `manual-${now.getTime()}`;
+  const previous = audit.path.includes("/") ? (await audit.get()).data() || {} : {};
+  const sessionNumber = Number(previous.scheduleSessionNumber || 0) + (schedule ? 1 : 0);
+
+  await audit.set({
+    ...(previous || {}),
+    title: `${d.name || "Document"} — ${reason}`,
+    documentName: String(d.name || "Document"),
+    documentId,
+    documentIds: [documentId],
+    status: "QUEUED",
+    progress: 0,
+    riskScore: null,
+    riskSeverity: null,
+    riskRationale: null,
+    findingCount: 0,
+    createdBy: previous.createdBy || createdBy,
+    trigger: reason,
+    schemaVersion: "v5.1",
+    ...(schedule ? {
+      scheduleId: schedule.id,
+      scheduleSessionId: sessionId,
+      scheduleSessionNumber: sessionNumber,
+      scheduleFrequency: schedule.frequency,
+      scheduleRunAt: schedule.runAt,
+    } : {}),
+    createdAt: previous.createdAt || now,
+    updatedAt: now,
+  }, { merge: true });
+
+  await auditEvent(organizationId, audit.id, {
+    type: "STATUS",
+    agent: "Monitoring Agent",
+    message: schedule
+      ? `Monitoring session ${sessionNumber} queued (${schedule.frequency}).`
+      : reason,
+  });
+
+  await inngest.send({
+    name: "sentinel/audit.requested",
+    data: {
+      organizationId,
+      auditId: audit.id,
+      documentId,
+      documentIds: [documentId],
+      ...(schedule ? {
+        scheduleId: schedule.id,
+        scheduleSessionId: sessionId,
+        scheduleFrequency: schedule.frequency,
+        scheduleRunAt: schedule.runAt.toISOString(),
+      } : {}),
+    },
+  });
+  return audit.id;
+}
+
 async function tracked<T>(
   params: {
     organizationId: string;
@@ -124,10 +215,6 @@ export const runAudit = inngest.createFunction(
         auditId: string;
         documentId: string;
         documentIds?: string[];
-        scheduleId?: string | null;
-        scheduleSessionId?: string | null;
-        scheduleFrequency?: MonitorFrequency | null;
-        scheduleRunAt?: string | Date | null;
       };
 
       const db = getAdminDb();
@@ -159,15 +246,15 @@ export const runAudit = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { organizationId, auditId, documentId, scheduleId, scheduleSessionId, scheduleFrequency, scheduleRunAt } = event.data as {
+    const { organizationId, auditId, documentId } = event.data as {
       organizationId: string;
       auditId: string;
       documentId: string;
       documentIds?: string[];
-      scheduleId?: string | null;
-      scheduleSessionId?: string | null;
-      scheduleFrequency?: MonitorFrequency | null;
-      scheduleRunAt?: string | Date | null;
+      scheduleId?: string;
+      scheduleSessionId?: string;
+      scheduleFrequency?: MonitorFrequency;
+      scheduleRunAt?: string;
     };
     const db = getAdminDb();
     const base = `organizations/${organizationId}/audits/${auditId}`;
@@ -178,10 +265,12 @@ export const runAudit = inngest.createFunction(
         progress: 10,
         updatedAt: new Date(),
         schemaVersion: "v5.1",
-        ...(scheduleId ? { scheduleId } : {}),
-        ...(scheduleSessionId ? { scheduleSessionId } : {}),
-        ...(scheduleFrequency ? { scheduleFrequency } : {}),
-        ...(scheduleRunAt ? { scheduleRunAt: new Date(scheduleRunAt) } : {}),
+        ...(scheduleId ? {
+          scheduleId,
+          scheduleSessionId,
+          scheduleFrequency,
+          ...(scheduleRunAt ? { scheduleRunAt: new Date(scheduleRunAt) } : {}),
+        } : {}),
       });
       await auditEvent(organizationId, auditId, {
         type: "STATUS",
@@ -397,7 +486,9 @@ export const runAudit = inngest.createFunction(
 
       for (let i = 0; i < compliance.output.findings.length; i++) {
         const finding = compliance.output.findings[i];
-        const ref = findingsRef.doc(`finding-${i}`);
+        const sessionKey = scheduleSessionId || "initial";
+        const safeSessionKey = sessionKey.replace(/[^a-zA-Z0-9_-]/g, "-");
+        const ref = findingsRef.doc(`${safeSessionKey}-finding-${i}`);
         const evidenceIds = (finding.evidence || []).map(
           (_: any, j: number) => `${ref.id}-e-${j}`,
         );
@@ -423,14 +514,8 @@ export const runAudit = inngest.createFunction(
           sourceDocumentIds,
           sourceDocumentNames,
           sourceDocumentName,
-          scheduleId: scheduleId || null,
-          scheduleSessionId: scheduleSessionId || null,
-          scheduleFrequency: scheduleFrequency || null,
-          scheduleRunAt: scheduleRunAt ? new Date(scheduleRunAt) : null,
           trace: {
             auditId,
-            scheduleId: scheduleId || null,
-            scheduleSessionId: scheduleSessionId || null,
             controlIds: finding.controlIds || [],
             evidenceIds,
             analysisRunId: compliance.runId,
@@ -440,6 +525,12 @@ export const runAudit = inngest.createFunction(
           createdAt: now,
           updatedAt: now,
           schemaVersion: "v5.1",
+          ...(scheduleSessionId ? {
+            scheduleId: scheduleId || null,
+            scheduleSessionId,
+            scheduleFrequency: scheduleFrequency || null,
+            scheduleRunAt: scheduleRunAt ? new Date(scheduleRunAt) : null,
+          } : {}),
         };
         batch.set(ref, data);
         persisted.push({ id: ref.id, finding: data });
@@ -474,6 +565,7 @@ export const runAudit = inngest.createFunction(
               ...(matchedChunk?.id
                 ? { chunkId: matchedChunk.id }
                 : {}),
+              ...(scheduleSessionId ? { scheduleSessionId, scheduleId: scheduleId || null } : {}),
             };
           },
         )
@@ -528,6 +620,7 @@ export const runAudit = inngest.createFunction(
           createdAt: now,
           updatedAt: now,
           schemaVersion: "v5.1",
+          ...(scheduleSessionId ? { scheduleId: scheduleId || null, scheduleSessionId } : {}),
         });
         if (persisted[i]?.id) {
           await findingsRef
@@ -624,12 +717,11 @@ export const monitorSchedules = inngest.createFunction(
               {
                 id: String(schedule.id),
                 frequency: schedule.frequency as MonitorFrequency,
-                scheduledAt: now,
-                active: Boolean(schedule.active),
+                runAt: now,
+                sessionId: `schedule-${String(schedule.id)}-${now.getTime()}`,
               },
             )
-          )
-            queued++;
+          ) queued++;
         const frequency = schedule.frequency as MonitorFrequency;
         await db
           .doc(schedule.path)

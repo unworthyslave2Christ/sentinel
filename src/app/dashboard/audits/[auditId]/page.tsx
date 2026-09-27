@@ -8,15 +8,12 @@ import { serializeFirestore } from "@/lib/serialize-firestore";
 
 export default async function Audit({
   params,
-  searchParams,
 }: {
   params: Promise<{ auditId: string }>;
-  searchParams: Promise<{ runCurrentSchedule?: string }>;
 }) {
   const s = await getCurrentSession();
   if (!s?.user?.id) return null;
   const { auditId } = await params;
-  const { runCurrentSchedule } = await searchParams;
   const org = await ensureOrganization(s.user.id, s.user.email);
   const db = getAdminDb();
   const a = await db.doc(`organizations/${org}/audits/${auditId}`).get();
@@ -29,7 +26,8 @@ export default async function Audit({
   const documentName = String(
     auditData.documentName || sourceDocument?.data()?.name || "",
   ).trim();
-  const [f, evidence, runs, events] = await Promise.all([
+  const currentSessionId = String(auditData.scheduleSessionId || "");
+  const [fAll, evidence, runs, events] = await Promise.all([
     a.ref.collection("findings").orderBy("createdAt", "desc").get(),
     a.ref.collection("evidence").orderBy("createdAt", "asc").get(),
     db
@@ -39,6 +37,12 @@ export default async function Audit({
       .get(),
     a.ref.collection("events").orderBy("createdAt", "desc").limit(100).get(),
   ]);
+  const f = currentSessionId
+    ? fAll.docs.filter((x) => String(x.data().scheduleSessionId || "") === currentSessionId)
+    : fAll.docs;
+  const currentEvidence = currentSessionId
+    ? evidence.docs.filter((x) => String(x.data().scheduleSessionId || "") === currentSessionId)
+    : evidence.docs;
   return (
     <AuditLive
       auditId={auditId}
@@ -49,13 +53,13 @@ export default async function Audit({
         ...(documentName ? { documentName } : {}),
       })}
       initialFindings={serializeFirestore(
-        f.docs.map((x) => ({
+        f.map((x) => ({
           id: x.id,
           ...x.data(),
         })),
       )}
       initialEvidence={serializeFirestore(
-        evidence.docs.map((x) => ({
+        currentEvidence.map((x) => ({
           id: x.id,
           ...x.data(),
         })),
@@ -72,7 +76,6 @@ export default async function Audit({
           ...x.data(),
         })),
       )}
-      autoRunCurrentSchedule={runCurrentSchedule === "1"}
     />
 );
 }

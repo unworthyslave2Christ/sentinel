@@ -1,1 +1,12 @@
-import Link from "next/link";import {getCurrentSession} from "@/server/session";import {ensureOrganization} from "@/server/organization";import {getAdminDb} from "@/server/firebase/admin";export default async function Audits(){const s=await getCurrentSession();if(!s?.user?.id)return null;const org=await ensureOrganization(s.user.id,s.user.email);const q=await getAdminDb().collection(`organizations/${org}/audits`).orderBy("createdAt","desc").limit(50).get();return <div className="p-6 lg:p-10"><h1 className="text-3xl font-semibold">Audits</h1><div className="mt-8 rounded-xl border bg-white divide-y">{q.docs.map(x=><Link className="flex justify-between p-5 hover:bg-slate-50" href={`/dashboard/audits/${x.id}${x.data().scheduleId ? "?runCurrentSchedule=1" : ""}`} key={x.id}><span>{x.data().title}</span><span>{x.data().status} · {x.data().findingCount||0}</span></Link>)}</div></div>}
+import { getCurrentSession } from "@/server/session";
+import { ensureOrganization } from "@/server/organization";
+import { getAdminDb } from "@/server/firebase/admin";
+import AuditsLiveList from "@/components/audits-live-list";
+
+export default async function Audits() {
+  const s = await getCurrentSession(); if (!s?.user?.id) return null;
+  const org = await ensureOrganization(s.user.id, s.user.email);
+  const q = await getAdminDb().collection(`organizations/${org}/audits`).orderBy("createdAt", "desc").limit(50).get();
+  const audits = q.docs.map((x) => ({ id: x.id, title: String(x.data().title || "Audit"), status: String(x.data().status || "QUEUED"), findingCount: Number(x.data().findingCount || 0), scheduleSessionNumber: Number(x.data().scheduleSessionNumber || 0) }));
+  return <div className="p-6 lg:p-10"><div className="text-sm font-semibold text-blue-600">Compliance workspace</div><h1 className="mt-1 text-3xl font-semibold">Audits</h1><p className="mt-2 text-slate-500">Live audit status updates automatically while monitoring sessions are running.</p><AuditsLiveList audits={audits} /></div>;
+}

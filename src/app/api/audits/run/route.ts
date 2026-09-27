@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     const organizationId = member.organizationId;
     const auditId = String(body.auditId || "");
     const documentId = String(body.documentId || "");
+    const runCurrentSchedule = body.currentSchedule === true;
 
     if (!auditId || !documentId) {
       return NextResponse.json(
@@ -74,11 +75,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update the DOCUMENT REFERENCE, not the snapshot.
+    const auditData = auditSnap.data() || {};
+    const scheduleId = String(body.scheduleId || auditData.scheduleId || "");
+    const now = new Date();
+    const scheduleSessionId = scheduleId && runCurrentSchedule
+      ? `schedule-${scheduleId}-${now.getTime()}-${documentId}`
+      : undefined;
+    const scheduleSessionNumber = scheduleId && runCurrentSchedule
+      ? Number(auditData.scheduleSessionNumber || 0) + 1
+      : Number(auditData.scheduleSessionNumber || 0);
+
     await auditRef.update({
       status: "QUEUED",
+      progress: 0,
+      findingCount: 0,
       documentName: String(documentSnap.data()?.name || "Source document"),
-      updatedAt: new Date(),
+      updatedAt: now,
+      ...(scheduleSessionId ? {
+        scheduleId,
+        scheduleSessionId,
+        scheduleSessionNumber,
+        scheduleFrequency: auditData.scheduleFrequency || null,
+        scheduleRunAt: now,
+        completedAt: null,
+      } : {}),
     });
 
     // Now dispatch the real audit workforce.
@@ -89,6 +109,13 @@ export async function POST(request: Request) {
         auditId,
         documentId,
         documentIds: [documentId],
+        ...(scheduleSessionId ? {
+          scheduleId,
+          scheduleSessionId,
+          scheduleSessionNumber,
+          scheduleFrequency: auditData.scheduleFrequency,
+          scheduleRunAt: now.toISOString(),
+        } : {}),
       },
     });
 

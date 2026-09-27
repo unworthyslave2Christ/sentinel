@@ -1,3 +1,12 @@
-import { TaskStatus } from "@/components/task-status";
-import { getCurrentSession } from "@/server/session"; import { ensureOrganization } from "@/server/organization"; import { getAdminDb } from "@/server/firebase/admin";
-export default async function Tasks(){const s=await getCurrentSession();if(!s?.user?.id)return null;const org=await ensureOrganization(s.user.id,s.user.email);const q=await getAdminDb().collection(`organizations/${org}/remediationTasks`).orderBy("createdAt","desc").limit(100).get();return <div className="p-6 lg:p-10"><div className="text-sm font-semibold text-blue-600">Remediation</div><h1 className="mt-1 text-3xl font-semibold">Action queue</h1><p className="mt-2 text-slate-500">Human-review tasks generated from evidence-backed findings.</p><div className="mt-8 overflow-hidden rounded-xl border bg-white divide-y">{q.empty&&<div className="p-6 text-sm text-slate-500">No remediation tasks yet.</div>}{q.docs.map(x=>{const d=x.data();return <div key={x.id} className="p-5"><div className="flex justify-between gap-4"><div><h2 className="font-semibold">{d.title}</h2><p className="mt-1 text-sm text-slate-600">{d.description}</p></div><TaskStatus taskId={x.id} initial={String(d.status || "OPEN")} /></div><div className="mt-3 text-xs text-slate-500">Priority: {d.priority} · Due in {d.dueInDays} days</div></div>})}</div></div>}
+import { getCurrentSession } from "@/server/session";
+import { ensureOrganization } from "@/server/organization";
+import { getAdminDb } from "@/server/firebase/admin";
+import TasksClient from "@/components/tasks-client";
+
+export default async function Tasks() {
+  const s = await getCurrentSession();
+  if (!s?.user?.id) return null;
+  const org = await ensureOrganization(s.user.id, s.user.email);
+  const q = await getAdminDb().collection(`organizations/${org}/remediationTasks`).orderBy("createdAt", "desc").limit(100).get();
+  return <TasksClient tasks={q.docs.map((x) => ({ id: x.id, ...x.data(), dueDate: x.data().dueDate?.toDate?.()?.toISOString?.() || null }))} />;
+}

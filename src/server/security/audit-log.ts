@@ -15,7 +15,8 @@ export type SecurityAction =
   | "MEMBER_ADDED"
   | "MEMBER_REMOVED"
   | "REPORT_EXPORTED"
-  | "AUDIT_RETRY_REQUESTED";
+  | "AUDIT_RETRY_REQUESTED"
+  | "CUSTOM_REMEDIATION_CREATED";
 
 export async function logSecurityEvent(
   member: CurrentMember,

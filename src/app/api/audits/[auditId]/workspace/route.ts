@@ -17,20 +17,27 @@ export async function GET(_: Request, { params }: { params: Promise<{ auditId: s
     const documentName = String(
       auditData.documentName || sourceDocument?.data()?.name || "",
     ).trim();
-    const [findings, evidence, runs, events] = await Promise.all([
+    const currentSessionId = String(auditData.scheduleSessionId || "");
+    const [allFindings, evidence, runs, events] = await Promise.all([
       audit.ref.collection("findings").orderBy("createdAt", "desc").get(),
       audit.ref.collection("evidence").orderBy("createdAt", "asc").get(),
       db.collection(`organizations/${member.organizationId}/analysisRuns`).where("auditId", "==", auditId).orderBy("createdAt", "asc").get(),
       audit.ref.collection("events").orderBy("createdAt", "desc").limit(100).get(),
     ]);
+    const findings = currentSessionId
+      ? allFindings.docs.filter((d) => String(d.data().scheduleSessionId || "") === currentSessionId)
+      : allFindings.docs;
+    const currentEvidence = currentSessionId
+      ? evidence.docs.filter((d) => String(d.data().scheduleSessionId || "") === currentSessionId)
+      : evidence.docs;
     return NextResponse.json({
       audit: {
         id: audit.id,
         ...audit.data(),
         ...(documentName ? { documentName } : {}),
       },
-      findings: findings.docs.map((d) => ({ id: d.id, ...d.data() })),
-      evidence: evidence.docs.map((d) => ({ id: d.id, ...d.data() })),
+      findings: findings.map((d) => ({ id: d.id, ...d.data() })),
+      evidence: currentEvidence.map((d) => ({ id: d.id, ...d.data() })),
       analysisRuns: runs.docs.map((d) => ({ id: d.id, ...d.data() })),
       events: events.docs.map((d) => ({ id: d.id, ...d.data() })),
     });

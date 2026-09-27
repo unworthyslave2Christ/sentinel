@@ -3,6 +3,7 @@ import { requirePermission } from "@/server/security/authorization";
 import { logSecurityEvent } from "@/server/security/audit-log";
 import { getAdminDb } from "@/server/firebase/admin";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
+import { inngest } from "@/inngest/client";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let member;
@@ -13,35 +14,48 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const snap = await ref.get();
   if (!snap.exists) return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
   const body = await req.json();
-  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  const current = snap.data() || {};
+  const now = new Date();
+  const patch: Record<string, unknown> = { updatedAt: now };
+  const frequencyChanged = ["EVERY_3_MINUTES", "EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"].includes(String(body.frequency));
+  const nextFrequency = frequencyChanged ? String(body.frequency) as MonitorFrequency : String(current.frequency) as MonitorFrequency;
   if (typeof body.active === "boolean") patch.active = body.active;
-  if (["EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"].includes(String(body.frequency))) {
-    const frequency = String(body.frequency) as MonitorFrequency;
-    patch.frequency = frequency;
-    patch.nextRunAt = nextRunAt(frequency, new Date());
+  if (frequencyChanged) {
+    patch.frequency = nextFrequency;
+    patch.nextRunAt = nextRunAt(nextFrequency, now);
+  }
+
+  // A reschedule is a new monitoring session, not a change to the old REVIEW result.
+  // Reuse the schedule's existing audit for each document and move it back to QUEUED.
+  const shouldStartSession = frequencyChanged || body.active === true;
+  if (shouldStartSession) {
+    const db = getAdminDb();
+    for (const documentId of current.documentIds || []) {
+      const audits = await db.collection(`organizations/${org}/audits`)
+        .where("documentId", "==", String(documentId))
+        .get();
+      if (!audits.empty) {
+        const audit = audits.docs.sort((a: any, b: any) => Number(b.data().createdAt?.toMillis?.() || 0) - Number(a.data().createdAt?.toMillis?.() || 0))[0];
+        const previous = audit.data() || {};
+        const sessionNumber = Number(previous.scheduleSessionNumber || 0) + 1;
+        const scheduleSessionId = `schedule-${id}-${now.getTime()}-${String(documentId)}`;
+        await audit.ref.update({
+          status: "QUEUED", progress: 0, findingCount: 0,
+          scheduleId: id, scheduleSessionId, scheduleSessionNumber: sessionNumber,
+          scheduleFrequency: nextFrequency, scheduleRunAt: now,
+          trigger: `Scheduled ${String(nextFrequency).toLowerCase()} monitoring`,
+          updatedAt: now, completedAt: null, failureReason: null,
+        });
+        await inngest.send({ name: "sentinel/audit.requested", data: {
+          organizationId: org, auditId: audit.id, documentId: String(documentId), documentIds: [String(documentId)],
+          scheduleId: id, scheduleSessionId, scheduleFrequency: nextFrequency, scheduleRunAt: now.toISOString(),
+        }});
+      }
+    }
   }
   await ref.update(patch);
-
-  // Keep schedule-linked audit pages synchronized with the current schedule.
-  // The audit page polls its workspace endpoint, so these changes become visible
-  // without requiring the user to navigate away.
-  const auditPatch: Record<string, unknown> = { updatedAt: new Date() };
-  if (typeof patch.active === "boolean") auditPatch.scheduleActive = patch.active;
-  if (patch.frequency) auditPatch.scheduleFrequency = patch.frequency;
-  if (patch.nextRunAt) auditPatch.scheduleNextRunAt = patch.nextRunAt;
-  if (Object.keys(auditPatch).length > 1) {
-    const audits = await getAdminDb()
-      .collection(`organizations/${org}/audits`)
-      .where("scheduleId", "==", id)
-      .limit(100)
-      .get();
-    const batch = getAdminDb().batch();
-    audits.docs.forEach((audit) => batch.update(audit.ref, auditPatch));
-    if (!audits.empty) await batch.commit();
-  }
-
   await logSecurityEvent(member, "MONITORING_SCHEDULE_UPDATED", { scheduleId: id, patch });
-  return NextResponse.json({ ok: true, nextRunAt: (patch.nextRunAt as Date | undefined)?.toISOString?.() ?? null });
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -52,14 +66,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const ref = getAdminDb().doc(`organizations/${org}/monitoringSchedules/${id}`);
   const snap = await ref.get();
   if (!snap.exists) return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
-  const audits = await getAdminDb()
-    .collection(`organizations/${org}/audits`)
-    .where("scheduleId", "==", id)
-    .limit(100)
-    .get();
-  const batch = getAdminDb().batch();
-  audits.docs.forEach((audit) => batch.update(audit.ref, { scheduleActive: false, updatedAt: new Date() }));
-  if (!audits.empty) await batch.commit();
   await ref.delete();
   await logSecurityEvent(member, "MONITORING_SCHEDULE_UPDATED", { scheduleId: id, deleted: true });
   return NextResponse.json({ ok: true });
