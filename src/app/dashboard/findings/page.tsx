@@ -25,6 +25,8 @@ export default async function Findings() {
         confidence: Number(x.confidence || 0), scheduleSessionId: x.scheduleSessionId || null,
         scheduleSessionNumber: Number(x.scheduleSessionNumber || 0),
         createdAt: x.createdAt?.toDate?.()?.toISOString?.() || null,
+        scheduleRunAt: x.scheduleRunAt?.toDate?.()?.toISOString?.() || null,
+        trigger: String(x.trigger || auditData.trigger || ""),
       });
     }
   }

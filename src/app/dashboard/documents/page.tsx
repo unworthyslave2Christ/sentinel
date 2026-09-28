@@ -24,6 +24,9 @@ export default async function Documents() {
       textLength: Number(d.textLength || 0),
       chunkCount: Number(d.chunkCount || 0),
       status: String(d.status || "UNKNOWN"),
+      monitoringStatus: String(d.monitoringStatus || "INACTIVE"),
+      monitoringNextRunAt: d.monitoringNextRunAt?.toDate?.()?.toISOString() ?? null,
+      monitoringLastRunAt: d.monitoringLastRunAt?.toDate?.()?.toISOString() ?? null,
     };
   });
 

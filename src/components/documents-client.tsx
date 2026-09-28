@@ -11,6 +11,9 @@ type DocumentRow = {
   textLength: number;
   chunkCount: number;
   status: string;
+  monitoringStatus: string;
+  monitoringNextRunAt: string | null;
+  monitoringLastRunAt: string | null;
 };
 
 export default function DocumentsClient({
@@ -65,7 +68,16 @@ export default function DocumentsClient({
                 {d.chunkCount.toLocaleString()} chunks
               </div>
             </div>
-            <span className="text-xs text-slate-500">{d.status}</span>
+            <div className="text-right">
+              <span className={`text-xs font-semibold ${d.monitoringStatus === "MONITORING" ? "text-blue-600" : d.monitoringStatus === "PAUSED" ? "text-amber-600" : "text-slate-500"}`}>
+                {d.monitoringStatus === "MONITORING" ? "MONITORING" : d.status}
+              </span>
+              {d.monitoringStatus === "MONITORING" && (
+                <div className="mt-1 text-[11px] text-slate-400">
+                  Next check: {d.monitoringNextRunAt ? new Date(d.monitoringNextRunAt).toLocaleString() : "queued"}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>

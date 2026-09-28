@@ -3,6 +3,7 @@ import { requirePermission } from "@/server/security/authorization";
 import { logSecurityEvent } from "@/server/security/audit-log";
 import { getAdminDb } from "@/server/firebase/admin";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
+import { startMonitoringSession, refreshDocumentMonitoringState } from "@/server/data/monitoring";
 
 const frequencies = ["EVERY_3_MINUTES", "EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"] as const;
 
@@ -74,10 +75,24 @@ export async function POST(req: Request) {
     createdAt: now,
     updatedAt: now,
   });
+  await refreshDocumentMonitoringState(db, org, ref.id, documentIds, frequency, true, now);
+  const sessions = [];
+  for (const documentId of documentIds) {
+    const session = await startMonitoringSession(db, {
+      organizationId: org,
+      scheduleId: ref.id,
+      documentId,
+      createdBy: member.userId,
+      frequency,
+      runAt: now,
+    });
+    if (session) sessions.push(session);
+  }
   await logSecurityEvent(member, "MONITORING_SCHEDULE_CREATED", {
     scheduleId: ref.id,
     frequency,
     documentCount: documentIds.length,
+    sessionsStarted: sessions.length,
   });
-  return NextResponse.json({ id: ref.id }, { status: 201 });
+  return NextResponse.json({ id: ref.id, sessionsStarted: sessions.length }, { status: 201 });
 }

@@ -32,6 +32,8 @@ export default async function Review() {
         evidence: finding.evidence?.[0]?.text || "", category: String(finding.category || "OTHER"),
         confidence: Number(finding.confidence || 0), scheduleSessionNumber: Number(finding.scheduleSessionNumber || 0),
         createdAt: finding.createdAt?.toDate?.()?.toISOString?.() || null,
+        scheduleRunAt: finding.scheduleRunAt?.toDate?.()?.toISOString?.() || null,
+        trigger: String(finding.trigger || auditData.trigger || ""),
       });
     });
   }

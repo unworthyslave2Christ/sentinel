@@ -17,6 +17,7 @@ import {
 } from "@/server/data/analysis-runs";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
 import { auditRef, documentsRef } from "@/server/data/model";
+import { startMonitoringSession } from "@/server/data/monitoring";
 
 const weights = { LOW: 20, MEDIUM: 45, HIGH: 75, CRITICAL: 95 } as const;
 const ACTIVE_AUDIT_STATUSES = ["QUEUED", "EXTRACTING", "MAPPING", "ANALYZING"];
@@ -88,10 +89,21 @@ async function queueAudit(
   reason: string,
   schedule?: { id: string; frequency: MonitorFrequency; runAt: Date; sessionId: string },
 ) {
+  if (schedule?.id) {
+    const result = await startMonitoringSession(db, {
+      organizationId,
+      scheduleId: schedule.id,
+      documentId,
+      createdBy,
+      frequency: schedule.frequency,
+      runAt: schedule.runAt,
+    });
+    return result?.auditId || null;
+  }
+
   const document = await db.doc(`organizations/${organizationId}/documents/${documentId}`).get();
   if (!document.exists) return null;
   const d = document.data() || {};
-
   const existing = await db
     .collection(`organizations/${organizationId}/audits`)
     .where("documentId", "==", documentId)
@@ -100,30 +112,10 @@ async function queueAudit(
     .get();
   if (!existing.empty) return existing.docs[0].id;
 
-  let audit: any = null;
-  if (schedule?.id) {
-    const scheduled = await db
-      .collection(`organizations/${organizationId}/audits`)
-      .where("documentId", "==", documentId)
-      .limit(50)
-      .get();
-    if (!scheduled.empty) {
-      const latest = scheduled.docs.sort((a: any, b: any) => Number(b.data().createdAt?.toMillis?.() || 0) - Number(a.data().createdAt?.toMillis?.() || 0))[0];
-      audit = latest.ref;
-    }
-  }
-
-  audit ||= db.collection(`organizations/${organizationId}/audits`).doc();
+  const audit = db.collection(`organizations/${organizationId}/audits`).doc();
   const now = new Date();
-  const sessionId = schedule?.sessionId || `manual-${now.getTime()}`;
-  const previous = audit.path.includes("/") ? (await audit.get()).data() || {} : {};
-  const sessionNumber = Number(previous.scheduleSessionNumber || 0) + (schedule ? 1 : 0);
-
   await audit.set({
-    ...(previous || {}),
-    title: schedule
-      ? `${d.name || "Document"} — Monitoring session ${sessionNumber}`
-      : `${d.name || "Document"} — ${reason}`,
+    title: `${d.name || "Document"} — ${reason}`,
     documentName: String(d.name || "Document"),
     documentId,
     documentIds: [documentId],
@@ -133,42 +125,20 @@ async function queueAudit(
     riskSeverity: null,
     riskRationale: null,
     findingCount: 0,
-    createdBy: previous.createdBy || createdBy,
+    createdBy,
     trigger: reason,
     schemaVersion: "v5.1",
-    ...(schedule ? {
-      scheduleId: schedule.id,
-      scheduleSessionId: sessionId,
-      scheduleSessionNumber: sessionNumber,
-      scheduleFrequency: schedule.frequency,
-      scheduleRunAt: schedule.runAt,
-    } : {}),
-    createdAt: previous.createdAt || now,
+    createdAt: now,
     updatedAt: now,
-  }, { merge: true });
-
+  });
   await auditEvent(organizationId, audit.id, {
     type: "STATUS",
     agent: "Monitoring Agent",
-    message: schedule
-      ? `Monitoring session ${sessionNumber} queued (${schedule.frequency}).`
-      : reason,
+    message: reason,
   });
-
   await inngest.send({
     name: "sentinel/audit.requested",
-    data: {
-      organizationId,
-      auditId: audit.id,
-      documentId,
-      documentIds: [documentId],
-      ...(schedule ? {
-        scheduleId: schedule.id,
-        scheduleSessionId: sessionId,
-        scheduleFrequency: schedule.frequency,
-        scheduleRunAt: schedule.runAt.toISOString(),
-      } : {}),
-    },
+    data: { organizationId, auditId: audit.id, documentId, documentIds: [documentId] },
   });
   return audit.id;
 }
@@ -716,30 +686,28 @@ export const monitorSchedules = inngest.createFunction(
     for (const schedule of schedules)
       await step.run(`schedule-${schedule.id}`, async () => {
         const organizationId = String(schedule.path).split("/")[1];
-        for (const documentId of schedule.documentIds || [])
-          if (
-            await queueAudit(
-              db,
-              organizationId,
-              String(documentId),
-              String(schedule.createdBy),
-              `Scheduled ${String(schedule.frequency).toLowerCase()} monitoring`,
-              {
-                id: String(schedule.id),
-                frequency: schedule.frequency as MonitorFrequency,
-                runAt: now,
-                sessionId: `schedule-${String(schedule.id)}-${now.getTime()}`,
-              },
-            )
-          ) queued++;
+        for (const documentId of schedule.documentIds || []) {
+          const auditId = await queueAudit(
+            db,
+            organizationId,
+            String(documentId),
+            String(schedule.createdBy),
+            `Scheduled ${String(schedule.frequency).toLowerCase()} monitoring`,
+            {
+              id: String(schedule.id),
+              frequency: schedule.frequency as MonitorFrequency,
+              runAt: now,
+              sessionId: `schedule-${String(schedule.id)}-${now.getTime()}-${String(documentId)}`,
+            },
+          );
+          if (auditId) queued++;
+        }
         const frequency = schedule.frequency as MonitorFrequency;
-        await db
-          .doc(schedule.path)
-          .update({
-            lastRunAt: now,
-            nextRunAt: nextRunAt(frequency, now),
-            updatedAt: new Date(),
-          });
+        await db.doc(schedule.path).update({
+          lastRunAt: now,
+          nextRunAt: nextRunAt(frequency, now),
+          updatedAt: new Date(),
+        });
       });
     return { schedules: schedules.length, queued };
   },
