@@ -1,7 +1,7 @@
 "use client";
 
 import { frequencyLabel, type MonitorFrequency } from "@/lib/monitoring/schedule";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DocumentItem = { id: string; name: string; monitoringStatus?: string };
 type Schedule = { id: string; name: string; frequency: string; active: boolean; documentIds?: string[]; nextRunAt: string | null; lastRunAt: string | null };
@@ -35,6 +35,16 @@ export default function MonitoringClient({ documents: initialDocuments, schedule
   const [frequency, setFrequency] = useState<MonitorFrequency>("WEEKLY");
   const [selected, setSelected] = useState<string[]>(initialDocuments.slice(0, 1).map((x) => x.id));
   const [busy, setBusy] = useState(false);
+
+  const nextScheduledRun = useMemo(() => {
+    const from = new Date();
+    if (frequency === "EVERY_3_MINUTES") from.setMinutes(from.getMinutes() + 3);
+    else if (frequency === "EVERY_5_MINUTES") from.setMinutes(from.getMinutes() + 5);
+    else if (frequency === "DAILY") from.setDate(from.getDate() + 1);
+    else if (frequency === "WEEKLY") from.setDate(from.getDate() + 7);
+    else from.setMonth(from.getMonth() + 1);
+    return from;
+  }, [frequency]);
 
   const refresh = useCallback(async () => {
     try {
@@ -125,6 +135,7 @@ export default function MonitoringClient({ documents: initialDocuments, schedule
           {busy ? "Creating…" : "Create schedule"}
         </button>
       </div>
+      <div className="mt-3 text-xs text-slate-500">Next scheduled run: <span className="font-medium text-slate-700">{nextScheduledRun.toLocaleString()}</span>. This time is calculated automatically from the selected frequency.</div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {documents.map((d) => <label key={d.id} className="flex items-center justify-between gap-3 rounded border p-3 text-sm">
           <span className="flex items-center gap-2">
