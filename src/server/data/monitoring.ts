@@ -48,7 +48,8 @@ export async function startMonitoringSession(
           Number(a.data().createdAt?.toMillis?.() || 0),
       )[0].ref;
 
-  const previous = audit.id && (await audit.get()).data();
+  const auditSnap = await audit.get();
+  const previous = auditSnap.exists ? auditSnap.data() : undefined;
   const sessionNumber = Number(previous?.scheduleSessionNumber || 0) + 1;
   const scheduleSessionId = `schedule-${input.scheduleId}-${runAt.getTime()}-${input.documentId}`;
   const documentName = String(documentSnap.data()?.name || "Source document");
