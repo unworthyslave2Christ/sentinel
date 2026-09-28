@@ -19,7 +19,26 @@ export async function GET() {
     .collection(`organizations/${org}/monitoringSchedules`)
     .orderBy("createdAt", "desc")
     .get();
-  return NextResponse.json(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  const schedules = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      nextRunAt: data.nextRunAt?.toDate?.()?.toISOString?.() ?? null,
+      lastRunAt: data.lastRunAt?.toDate?.()?.toISOString?.() ?? null,
+    };
+  });
+  const documentsSnap = await getAdminDb()
+    .collection(`organizations/${org}/documents`)
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get();
+  const documents = documentsSnap.docs.map((d) => ({
+    id: d.id,
+    name: String(d.data().name || "Untitled document"),
+    monitoringStatus: String(d.data().monitoringStatus || "INACTIVE"),
+  }));
+  return NextResponse.json({ schedules, documents });
 }
 
 export async function POST(req: Request) {
@@ -94,5 +113,17 @@ export async function POST(req: Request) {
     documentCount: documentIds.length,
     sessionsStarted: sessions.length,
   });
-  return NextResponse.json({ id: ref.id, sessionsStarted: sessions.length }, { status: 201 });
+  return NextResponse.json({
+    id: ref.id,
+    sessionsStarted: sessions.length,
+    schedule: {
+      id: ref.id,
+      name,
+      frequency,
+      documentIds,
+      active: true,
+      nextRunAt: nextRunAt(frequency, now).toISOString(),
+      lastRunAt: null,
+    },
+  }, { status: 201 });
 }

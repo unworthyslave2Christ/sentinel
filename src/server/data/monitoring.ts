@@ -144,17 +144,51 @@ export async function refreshDocumentMonitoringState(
   active: boolean,
   now = new Date(),
 ) {
-  const next = active ? nextRunAt(frequency, now) : null;
   for (const documentId of documentIds) {
     const ref = db.doc(`organizations/${organizationId}/documents/${documentId}`);
     const snap = await ref.get();
     if (!snap.exists) continue;
-    await ref.update({
-      monitoringStatus: active ? "MONITORING" : "PAUSED",
-      monitoringScheduleId: active ? scheduleId : null,
-      monitoringScheduleFrequency: active ? frequency : null,
-      ...(active ? { monitoringNextRunAt: next } : { monitoringNextRunAt: null }),
-      updatedAt: now,
-    });
+
+    if (active) {
+      await ref.update({
+        monitoringStatus: "MONITORING",
+        monitoringScheduleId: scheduleId,
+        monitoringScheduleFrequency: frequency,
+        monitoringNextRunAt: nextRunAt(frequency, now),
+        updatedAt: now,
+      });
+      continue;
+    }
+
+    // Do not mark a document as paused if another active schedule still
+    // monitors the same document.
+    const schedules = await db
+      .collection(`organizations/${organizationId}/monitoringSchedules`)
+      .where("active", "==", true)
+      .get();
+    const replacement = schedules.docs
+      .map((schedule) => ({ id: schedule.id, data: schedule.data() }))
+      .find(({ id, data }) =>
+        id !== scheduleId && Array.isArray(data.documentIds) && data.documentIds.map(String).includes(documentId),
+      );
+
+    if (replacement) {
+      const replacementFrequency = String(replacement.data.frequency || "WEEKLY") as MonitorFrequency;
+      await ref.update({
+        monitoringStatus: "MONITORING",
+        monitoringScheduleId: replacement.id,
+        monitoringScheduleFrequency: replacementFrequency,
+        monitoringNextRunAt: replacement.data.nextRunAt || nextRunAt(replacementFrequency, now),
+        updatedAt: now,
+      });
+    } else {
+      await ref.update({
+        monitoringStatus: "PAUSED",
+        monitoringScheduleId: null,
+        monitoringScheduleFrequency: null,
+        monitoringNextRunAt: null,
+        updatedAt: now,
+      });
+    }
   }
 }
