@@ -47,9 +47,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Changing the cadence or explicitly resuming starts a fresh monitoring
   // session immediately. It never interrupts an already-active workforce run.
+  const startedSessions: Array<{ auditId: string; scheduleSessionId: string; scheduleSessionNumber: number }> = [];
   if (active && (frequencyChanged || body.active === true)) {
     for (const documentId of documentIds) {
-      await startMonitoringSession(db, {
+      const session = await startMonitoringSession(db, {
         organizationId: org,
         scheduleId: id,
         documentId,
@@ -57,6 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         frequency: nextFrequency,
         runAt: now,
       });
+      if (session) startedSessions.push(session);
     }
   } else {
     await refreshDocumentMonitoringState(
@@ -75,7 +77,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     patch,
     rescheduled: active && (frequencyChanged || body.active === true),
   });
-  return NextResponse.json({ ok: true, rescheduled: active && (frequencyChanged || body.active === true) });
+  return NextResponse.json({
+    ok: true,
+    rescheduled: startedSessions.length > 0,
+    sessionsStarted: startedSessions.length,
+    sessions: startedSessions,
+  });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {

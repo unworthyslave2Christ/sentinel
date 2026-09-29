@@ -3,7 +3,7 @@
 import { frequencyLabel, type MonitorFrequency } from "@/lib/monitoring/schedule";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type DocumentItem = { id: string; name: string; monitoringStatus?: string };
+type DocumentItem = { id: string; name: string; monitoringStatus?: string; monitoringSessionNumber?: number | null };
 type Schedule = { id: string; name: string; frequency: string; active: boolean; documentIds?: string[]; nextRunAt: string | null; lastRunAt: string | null };
 type Alert = { id: string; title: string; severity: string; status: string; createdAt: string | null };
 type Props = { documents: DocumentItem[]; schedules: Schedule[]; alerts: Alert[] };
@@ -143,7 +143,7 @@ export default function MonitoringClient({ documents: initialDocuments, schedule
             {d.name}
           </span>
           <span className={`text-[11px] font-semibold ${d.monitoringStatus === "MONITORING" ? "text-blue-600" : d.monitoringStatus === "PAUSED" ? "text-amber-600" : "text-slate-400"}`}>
-            {d.monitoringStatus === "MONITORING" ? "MONITORING" : d.monitoringStatus === "PAUSED" ? "PAUSED" : "NOT MONITORED"}
+            {d.monitoringStatus === "MONITORING" ? `MONITORING${d.monitoringSessionNumber ? ` · session ${d.monitoringSessionNumber}` : ""}` : d.monitoringStatus === "PAUSED" ? "PAUSED" : "NOT MONITORED"}
           </span>
         </label>)}
       </div>

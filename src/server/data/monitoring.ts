@@ -102,9 +102,17 @@ export async function startMonitoringSession(
     monitoringScheduleId: input.scheduleId,
     monitoringScheduleFrequency: input.frequency,
     monitoringLastRunAt: runAt,
+    monitoringSessionId: scheduleSessionId,
+    monitoringSessionNumber: sessionNumber,
     monitoringNextRunAt: nextRunAt(input.frequency, runAt),
     updatedAt: runAt,
   });
+
+  await db.doc(`organizations/${input.organizationId}/monitoringSchedules/${input.scheduleId}`).set({
+    lastRunAt: runAt,
+    nextRunAt: nextRunAt(input.frequency, runAt),
+    updatedAt: runAt,
+  }, { merge: true });
 
   await auditEvent(input.organizationId, audit.id, {
     type: "STATUS",

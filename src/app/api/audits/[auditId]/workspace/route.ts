@@ -30,6 +30,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ auditId: s
     const currentEvidence = currentSessionId
       ? evidence.docs.filter((d) => String(d.data().scheduleSessionId || "") === currentSessionId)
       : evidence.docs;
+    const currentRuns = currentSessionId
+      ? runs.docs.filter((d) => String(d.data().scheduleSessionId || "") === currentSessionId)
+      : runs.docs;
     return NextResponse.json({
       audit: {
         id: audit.id,
@@ -38,7 +41,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ auditId: s
       },
       findings: findings.map((d) => ({ id: d.id, ...d.data() })),
       evidence: currentEvidence.map((d) => ({ id: d.id, ...d.data() })),
-      analysisRuns: runs.docs.map((d) => ({ id: d.id, ...d.data() })),
+      analysisRuns: currentRuns.map((d) => ({ id: d.id, ...d.data() })),
       events: events.docs.map((d) => ({ id: d.id, ...d.data() })),
     });
   } catch (error) {

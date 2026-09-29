@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import UploadForm from "@/components/upload-form";
 
 type DocumentRow = {
@@ -14,6 +15,7 @@ type DocumentRow = {
   monitoringStatus: string;
   monitoringNextRunAt: string | null;
   monitoringLastRunAt: string | null;
+  monitoringSessionNumber?: number | null;
 };
 
 export default function DocumentsClient({
@@ -22,6 +24,11 @@ export default function DocumentsClient({
   initialDocuments: DocumentRow[];
 }) {
   const router = useRouter();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => router.refresh(), 5000);
+    return () => window.clearInterval(timer);
+  }, [router]);
 
   return (
     <div className="p-6 lg:p-10">
@@ -74,7 +81,7 @@ export default function DocumentsClient({
               </span>
               {d.monitoringStatus === "MONITORING" && (
                 <div className="mt-1 text-[11px] text-slate-400">
-                  Next check: {d.monitoringNextRunAt ? new Date(d.monitoringNextRunAt).toLocaleString() : "queued"}
+                  {d.monitoringSessionNumber ? `Session ${d.monitoringSessionNumber} · ` : ""}Next check: {d.monitoringNextRunAt ? new Date(d.monitoringNextRunAt).toLocaleString() : "queued"}
                 </div>
               )}
             </div>

@@ -151,10 +151,19 @@ async function tracked<T>(
     inputDocuments: string[];
     inputEvidence?: string[];
     promptVersion: string;
+    scheduleId?: string;
+    scheduleSessionId?: string;
+    scheduleSessionNumber?: number;
+    scheduleRunAt?: string;
+    trigger?: string;
   },
   fn: (runId: string) => Promise<T>,
 ) {
-  const runId = await createAnalysisRun({ ...params, model: modelName() });
+  const runId = await createAnalysisRun({
+    ...params,
+    model: modelName(),
+    ...(params.scheduleRunAt ? { scheduleRunAt: new Date(params.scheduleRunAt) } : {}),
+  });
   try {
     const output = await fn(runId);
     await finishAnalysisRun(params.organizationId, runId, "COMPLETED", output);
@@ -224,6 +233,7 @@ export const runAudit = inngest.createFunction(
       documentId,
       scheduleId,
       scheduleSessionId,
+      scheduleSessionNumber,
       scheduleFrequency,
       scheduleRunAt,
     } = event.data as {
@@ -233,6 +243,7 @@ export const runAudit = inngest.createFunction(
       documentIds?: string[];
       scheduleId?: string;
       scheduleSessionId?: string;
+      scheduleSessionNumber?: number;
       scheduleFrequency?: MonitorFrequency;
       scheduleRunAt?: string;
     };
@@ -342,6 +353,10 @@ export const runAudit = inngest.createFunction(
           inputDocuments: docs.map((x) => x.id),
           inputEvidence: evidenceCandidates,
           promptVersion: PROMPT_VERSIONS.controls,
+          scheduleId, scheduleSessionId, scheduleSessionNumber, scheduleRunAt,
+          trigger: scheduleSessionId
+            ? ((scheduleSessionNumber || 1) > 1 ? "RESCHEDULED_MONITORING" : "MONITORING_SCHEDULED")
+            : "MANUAL_AUDIT",
         },
         () =>
           runControlAgent({
@@ -384,6 +399,10 @@ export const runAudit = inngest.createFunction(
           inputDocuments: docs.map((x) => x.id),
           inputEvidence: evidenceCandidates,
           promptVersion: PROMPT_VERSIONS.compliance,
+          scheduleId, scheduleSessionId, scheduleSessionNumber, scheduleRunAt,
+          trigger: scheduleSessionId
+            ? ((scheduleSessionNumber || 1) > 1 ? "RESCHEDULED_MONITORING" : "MONITORING_SCHEDULED")
+            : "MANUAL_AUDIT",
         },
         () =>
           runComplianceAgent({
@@ -418,6 +437,10 @@ export const runAudit = inngest.createFunction(
           inputDocuments: docs.map((x) => x.id),
           inputEvidence: evidenceCandidates,
           promptVersion: PROMPT_VERSIONS.risk,
+          scheduleId, scheduleSessionId, scheduleSessionNumber, scheduleRunAt,
+          trigger: scheduleSessionId
+            ? ((scheduleSessionNumber || 1) > 1 ? "RESCHEDULED_MONITORING" : "MONITORING_SCHEDULED")
+            : "MANUAL_AUDIT",
         },
         () => runRiskAgent({ findings: compliance.output.findings }),
       ).then(async (r) => {
@@ -443,6 +466,10 @@ export const runAudit = inngest.createFunction(
           inputDocuments: docs.map((x) => x.id),
           inputEvidence: evidenceCandidates,
           promptVersion: PROMPT_VERSIONS.remediation,
+          scheduleId, scheduleSessionId, scheduleSessionNumber, scheduleRunAt,
+          trigger: scheduleSessionId
+            ? ((scheduleSessionNumber || 1) > 1 ? "RESCHEDULED_MONITORING" : "MONITORING_SCHEDULED")
+            : "MANUAL_AUDIT",
         },
         () => runRemediationAgent({ findings: compliance.output.findings }),
       ).then(async (r) => {
@@ -508,8 +535,11 @@ export const runAudit = inngest.createFunction(
           ...(scheduleSessionId ? {
             scheduleId: scheduleId || null,
             scheduleSessionId,
+            scheduleSessionNumber: scheduleSessionNumber || 1,
             scheduleFrequency: scheduleFrequency || null,
             scheduleRunAt: scheduleRunAt ? new Date(scheduleRunAt) : null,
+            trigger: (scheduleSessionNumber || 1) > 1 ? "RESCHEDULED_MONITORING" : "MONITORING_SCHEDULED",
+            monitoringSessionLabel: `Monitoring session ${scheduleSessionNumber || 1}`,
           } : {}),
         };
         batch.set(ref, data);

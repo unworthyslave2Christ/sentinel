@@ -248,6 +248,8 @@ export default function AuditLive({
           {a.scheduleId ? (
             <p className="mt-1 text-xs text-slate-500">
               Monitoring: {a.scheduleFrequency || "scheduled"} · session {a.scheduleSessionNumber || 1}
+              {a.scheduleRunAt ? ` · started ${new Date(a.scheduleRunAt).toLocaleString()}` : ""}
+              {a.trigger ? ` · ${String(a.trigger).replaceAll("_", " ").toLowerCase()}` : ""}
             </p>
           ) : null}
         </div>

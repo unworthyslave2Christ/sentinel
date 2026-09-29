@@ -13,6 +13,11 @@ export type AnalysisRunInput = {
   promptVersion: string;
   inputDocuments: string[];
   inputEvidence?: string[];
+  scheduleId?: string;
+  scheduleSessionId?: string;
+  scheduleSessionNumber?: number;
+  scheduleRunAt?: Date;
+  trigger?: string;
 };
 
 export async function createAnalysisRun(input: AnalysisRunInput) {
@@ -26,6 +31,11 @@ export async function createAnalysisRun(input: AnalysisRunInput) {
     promptVersion: input.promptVersion,
     inputDocuments: input.inputDocuments,
     inputEvidence: input.inputEvidence || [],
+    ...(input.scheduleId ? { scheduleId: input.scheduleId } : {}),
+    ...(input.scheduleSessionId ? { scheduleSessionId: input.scheduleSessionId } : {}),
+    ...(input.scheduleSessionNumber !== undefined ? { scheduleSessionNumber: input.scheduleSessionNumber } : {}),
+    ...(input.scheduleRunAt ? { scheduleRunAt: input.scheduleRunAt } : {}),
+    ...(input.trigger ? { trigger: input.trigger } : {}),
     status: "RUNNING" satisfies AnalysisRunStatus,
     startedAt: FieldValue.serverTimestamp(),
     createdAt: FieldValue.serverTimestamp(),

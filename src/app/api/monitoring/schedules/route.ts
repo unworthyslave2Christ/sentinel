@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     updatedAt: now,
   });
   await refreshDocumentMonitoringState(db, org, ref.id, documentIds, frequency, true, now);
-  const sessions = [];
+  const sessions: Array<{ auditId: string; scheduleSessionId: string; scheduleSessionNumber: number }> = [];
   for (const documentId of documentIds) {
     const session = await startMonitoringSession(db, {
       organizationId: org,
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       documentIds,
       active: true,
       nextRunAt: nextRunAt(frequency, now).toISOString(),
-      lastRunAt: null,
+      lastRunAt: sessions.length ? now.toISOString() : null,
     },
   }, { status: 201 });
 }

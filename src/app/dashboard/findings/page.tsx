@@ -1,3 +1,4 @@
+import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
@@ -31,5 +32,6 @@ export default async function Findings() {
     }
   }
   rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  return <div className="p-6 lg:p-10"><div><div className="text-sm font-semibold text-blue-600">Evidence-backed issues</div><h1 className="mt-1 text-3xl font-semibold">Findings</h1><p className="mt-2 text-slate-500">Review findings across the organization, then open the audit for source evidence.</p></div><FindingFilters rows={rows} /></div>;
+  return <div className="p-6 lg:p-10"><div><div className="text-sm font-semibold text-blue-600">Evidence-backed issues</div><h1 className="mt-1 text-3xl font-semibold">Findings</h1><p className="mt-2 text-slate-500">Review findings across the organization, then open the audit for source evidence.</p></div><AutoRefresh intervalMs={5000} />
+<FindingFilters rows={rows} /></div>;
 }

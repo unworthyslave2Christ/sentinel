@@ -69,7 +69,7 @@ export default function FindingFilters({ rows, review = false }: { rows: Row[]; 
             <div className="flex flex-wrap items-start justify-between gap-4">
               <Link href={`/dashboard/audits/${x.auditId}`} className="min-w-0 flex-1">
                 <span className="font-medium">{x.title}</span>
-                <span className="mt-1 block text-xs text-slate-500">{x.severity} · {x.documentName} · {x.auditTitle}{x.scheduleSessionNumber ? ` · session ${x.scheduleSessionNumber}` : ""}{x.scheduleSessionNumber ? ` · rescheduled ${x.scheduleRunAt ? new Date(x.scheduleRunAt).toLocaleString() : ""}` : ""}</span>
+                <span className="mt-1 block text-xs text-slate-500">{x.severity} · {x.documentName} · {x.auditTitle}{x.scheduleSessionNumber ? ` · session ${x.scheduleSessionNumber}` : ""}{x.scheduleSessionNumber ? ` · ${x.trigger === "MONITORING_SCHEDULED" ? "scheduled" : "rescheduled"}${x.scheduleRunAt ? ` ${new Date(x.scheduleRunAt).toLocaleString()}` : ""}` : ""}</span>
               </Link>
               <ReviewControls id={x.id} auditId={x.auditId} initial={x.status} />
             </div>
@@ -78,7 +78,7 @@ export default function FindingFilters({ rows, review = false }: { rows: Row[]; 
           <Link key={`${x.auditId}-${x.id}`} href={`/dashboard/audits/${x.auditId}`} className="grid grid-cols-[1fr_120px_180px_120px] gap-3 border-b p-4 text-sm hover:bg-slate-50">
             <span><span className="font-medium">{x.title}</span><span className="mt-1 block text-xs text-slate-500">{x.category || "Finding"} · {Math.round(Number(x.confidence || 0) * 100)}% confidence</span></span>
             <span><span className="rounded-full border px-2 py-1 text-xs font-semibold">{x.severity}</span></span>
-            <span className="truncate text-slate-600">{x.documentName}<span className="block text-xs text-slate-400">{x.auditTitle}{x.scheduleSessionNumber ? ` · session ${x.scheduleSessionNumber}` : ""}{x.scheduleSessionNumber && x.scheduleRunAt ? ` · rescheduled ${new Date(x.scheduleRunAt).toLocaleString()}` : ""}</span></span>
+            <span className="truncate text-slate-600">{x.documentName}<span className="block text-xs text-slate-400">{x.auditTitle}{x.scheduleSessionNumber ? ` · session ${x.scheduleSessionNumber}` : ""}{x.scheduleSessionNumber ? ` · ${x.trigger === "MONITORING_SCHEDULED" ? "scheduled" : "rescheduled"}${x.scheduleRunAt ? ` ${new Date(x.scheduleRunAt).toLocaleString()}` : ""}` : ""}</span></span>
             <span className="text-slate-600">{x.status}</span>
           </Link>
         ))}

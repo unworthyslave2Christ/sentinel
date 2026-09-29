@@ -1,3 +1,4 @@
+import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
@@ -27,8 +28,14 @@ export default async function Documents() {
       monitoringStatus: String(d.monitoringStatus || "INACTIVE"),
       monitoringNextRunAt: d.monitoringNextRunAt?.toDate?.()?.toISOString() ?? null,
       monitoringLastRunAt: d.monitoringLastRunAt?.toDate?.()?.toISOString() ?? null,
+      monitoringSessionNumber: d.monitoringSessionNumber ? Number(d.monitoringSessionNumber) : null,
     };
   });
 
-  return <DocumentsClient initialDocuments={documents} />;
+  return (
+    <>
+      <AutoRefresh intervalMs={5000} />
+      <DocumentsClient initialDocuments={documents} />
+    </>
+  );
 }

@@ -1,3 +1,4 @@
+import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
@@ -38,5 +39,6 @@ export default async function Review() {
     });
   }
   rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  return <div className="p-6 lg:p-10"><div className="text-sm font-semibold text-blue-600">Governance</div><h1 className="mt-1 text-3xl font-semibold">Human review queue</h1><p className="mt-2 text-slate-500">Every material finding remains reviewable before it is accepted, dismissed, or resolved.</p><FindingFilters rows={rows} review /></div>;
+  return <div className="p-6 lg:p-10"><div className="text-sm font-semibold text-blue-600">Governance</div><h1 className="mt-1 text-3xl font-semibold">Human review queue</h1><p className="mt-2 text-slate-500">Every material finding remains reviewable before it is accepted, dismissed, or resolved.</p><AutoRefresh intervalMs={5000} />
+<FindingFilters rows={rows} review /></div>;
 }

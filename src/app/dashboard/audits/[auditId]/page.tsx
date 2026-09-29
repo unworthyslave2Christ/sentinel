@@ -43,6 +43,9 @@ export default async function Audit({
   const currentEvidence = currentSessionId
     ? evidence.docs.filter((x) => String(x.data().scheduleSessionId || "") === currentSessionId)
     : evidence.docs;
+  const currentRuns = currentSessionId
+    ? runs.docs.filter((x) => String(x.data().scheduleSessionId || "") === currentSessionId)
+    : runs.docs;
   return (
     <AuditLive
       auditId={auditId}
@@ -65,7 +68,7 @@ export default async function Audit({
         })),
       )}
       initialRuns={serializeFirestore(
-        runs.docs.map((x) => ({
+        currentRuns.map((x) => ({
           id: x.id,
           ...x.data(),
         })),
