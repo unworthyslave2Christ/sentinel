@@ -17,7 +17,7 @@ import {
 } from "@/server/data/analysis-runs";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
 import { auditRef, documentsRef } from "@/server/data/model";
-import { startMonitoringSession } from "@/server/data/monitoring";
+import { startMonitoringSession, processDueMonitoringSchedules } from "@/server/data/monitoring";
 
 const weights = { LOW: 20, MEDIUM: 45, HIGH: 75, CRITICAL: 95 } as const;
 const ACTIVE_AUDIT_STATUSES = ["QUEUED", "EXTRACTING", "MAPPING", "ANALYZING"];
