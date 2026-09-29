@@ -2,6 +2,7 @@ import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 import FindingFilters from "@/components/finding-filters";
 
 export default async function Review() {
@@ -9,6 +10,7 @@ export default async function Review() {
   if (!s?.user?.id) return null;
   const org = await ensureOrganization(s.user.id, s.user.email);
   const db = getAdminDb();
+  await processDueMonitoringSchedules(db);
   const audits = await db.collection(`organizations/${org}/audits`).orderBy("createdAt", "desc").limit(50).get();
   const rows: any[] = [];
   for (const audit of audits.docs) {

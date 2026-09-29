@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/server/security/authorization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 
 export async function GET(_: Request, { params }: { params: Promise<{ auditId: string }> }) {
   try {
     const member = await requirePermission("VIEW");
     const { auditId } = await params;
     const db = getAdminDb();
+    await processDueMonitoringSchedules(db);
     const audit = await db.doc(`organizations/${member.organizationId}/audits/${auditId}`).get();
     if (!audit.exists) return NextResponse.json({ error: "Audit not found" }, { status: 404 });
     const auditData = audit.data() || {};

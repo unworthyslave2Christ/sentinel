@@ -61,7 +61,7 @@ export default function MonitoringClient({ documents: initialDocuments, schedule
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(refresh, 5000);
     return () => window.clearInterval(timer);
   }, [refresh]);
 

@@ -200,3 +200,81 @@ export async function refreshDocumentMonitoringState(
     }
   }
 }
+
+
+/**
+ * Claims and executes monitoring schedules whose nextRunAt is due.
+ *
+ * The Inngest cron remains the primary scheduler, but dashboard/API polling
+ * also calls this function. That makes the UI authoritative even when the
+ * external scheduler is delayed or temporarily unavailable: a due schedule
+ * is claimed once, its next run is advanced immediately, and the new
+ * monitoring session is queued.
+ */
+export async function processDueMonitoringSchedules(
+  db: Firestore,
+  now = new Date(),
+  limit = 50,
+) {
+  const due = await db
+    .collectionGroup("monitoringSchedules")
+    .where("active", "==", true)
+    .where("nextRunAt", "<=", now)
+    .limit(limit)
+    .get();
+
+  let processed = 0;
+  let sessionsStarted = 0;
+
+  for (const scheduleDoc of due.docs) {
+    const scheduleRef = scheduleDoc.ref;
+
+    const claim = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(scheduleRef);
+      if (!fresh.exists) return null;
+      const data = fresh.data() || {};
+      if (!data.active) return null;
+
+      const next = data.nextRunAt?.toDate?.() || data.nextRunAt;
+      if (!(next instanceof Date) || next.getTime() > now.getTime()) return null;
+
+      const frequency = String(data.frequency || "WEEKLY") as MonitorFrequency;
+      const nextRun = nextRunAt(frequency, now);
+
+      tx.update(scheduleRef, {
+        lastRunAt: now,
+        nextRunAt: nextRun,
+        updatedAt: now,
+      });
+
+      return {
+        id: scheduleRef.id,
+        path: scheduleRef.path,
+        organizationId: String(scheduleRef.path).split("/")[1],
+        frequency,
+        documentIds: Array.isArray(data.documentIds)
+          ? data.documentIds.map(String)
+          : [],
+        createdBy: String(data.createdBy || ""),
+      };
+    });
+
+    if (!claim) continue;
+
+    processed += 1;
+
+    for (const documentId of claim.documentIds) {
+      const session = await startMonitoringSession(db, {
+        organizationId: claim.organizationId,
+        scheduleId: claim.id,
+        documentId,
+        createdBy: claim.createdBy,
+        frequency: claim.frequency,
+        runAt: now,
+      });
+      if (session) sessionsStarted += 1;
+    }
+  }
+
+  return { processed, sessionsStarted };
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/server/security/authorization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 
 function toIso(value: any) {
   return value?.toDate?.()?.toISOString?.() || (value instanceof Date ? value.toISOString() : value ?? null);
@@ -10,6 +11,7 @@ export async function GET() {
   try {
     const member = await requirePermission("VIEW");
     const db = getAdminDb();
+    await processDueMonitoringSchedules(db);
     const snap = await db
       .collection(`organizations/${member.organizationId}/audits`)
       .orderBy("createdAt", "desc")

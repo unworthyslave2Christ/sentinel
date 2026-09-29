@@ -3,7 +3,7 @@ import { requirePermission } from "@/server/security/authorization";
 import { logSecurityEvent } from "@/server/security/audit-log";
 import { getAdminDb } from "@/server/firebase/admin";
 import { nextRunAt, type MonitorFrequency } from "@/lib/monitoring/schedule";
-import { startMonitoringSession, refreshDocumentMonitoringState } from "@/server/data/monitoring";
+import { startMonitoringSession, refreshDocumentMonitoringState, processDueMonitoringSchedules } from "@/server/data/monitoring";
 
 const frequencies = ["EVERY_3_MINUTES", "EVERY_5_MINUTES", "DAILY", "WEEKLY", "MONTHLY"] as const;
 
@@ -15,7 +15,9 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const org = member.organizationId;
-  const snap = await getAdminDb()
+  const db = getAdminDb();
+  await processDueMonitoringSchedules(db);
+  const snap = await db
     .collection(`organizations/${org}/monitoringSchedules`)
     .orderBy("createdAt", "desc")
     .get();
@@ -28,7 +30,7 @@ export async function GET() {
       lastRunAt: data.lastRunAt?.toDate?.()?.toISOString?.() ?? null,
     };
   });
-  const documentsSnap = await getAdminDb()
+  const documentsSnap = await db
     .collection(`organizations/${org}/documents`)
     .orderBy("createdAt", "desc")
     .limit(50)
@@ -37,6 +39,7 @@ export async function GET() {
     id: d.id,
     name: String(d.data().name || "Untitled document"),
     monitoringStatus: String(d.data().monitoringStatus || "INACTIVE"),
+    monitoringSessionNumber: d.data().monitoringSessionNumber ? Number(d.data().monitoringSessionNumber) : null,
   }));
   return NextResponse.json({ schedules, documents });
 }

@@ -2,6 +2,7 @@ import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 import DocumentsClient from "@/components/documents-client";
 
 export default async function Documents() {
@@ -9,7 +10,9 @@ export default async function Documents() {
   if (!s?.user?.id) return null;
 
   const org = await ensureOrganization(s.user.id, s.user.email);
-  const q = await getAdminDb()
+  const db = getAdminDb();
+  await processDueMonitoringSchedules(db);
+  const q = await db
     .collection(`organizations/${org}/documents`)
     .orderBy("createdAt", "desc")
     .limit(100)

@@ -1,6 +1,7 @@
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 import AuditsLiveList from "@/components/audits-live-list";
 
 function toIso(value: any) {
@@ -11,7 +12,9 @@ export default async function Audits() {
   const s = await getCurrentSession();
   if (!s?.user?.id) return null;
   const org = await ensureOrganization(s.user.id, s.user.email);
-  const q = await getAdminDb().collection(`organizations/${org}/audits`).orderBy("createdAt", "desc").limit(50).get();
+  const db = getAdminDb();
+  await processDueMonitoringSchedules(db);
+  const q = await db.collection(`organizations/${org}/audits`).orderBy("createdAt", "desc").limit(50).get();
   const audits = q.docs.map((x) => {
     const d = x.data();
     const sessionNumber = Number(d.scheduleSessionNumber || (d.scheduleSessionId ? 1 : 0));

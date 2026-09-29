@@ -704,45 +704,9 @@ export const monitorSchedules = inngest.createFunction(
   },
   async ({ step }) => {
     const db = getAdminDb();
-    const now = new Date();
-    const schedules = await step.run("load-due-schedules", async () =>
-      (
-        await db
-          .collectionGroup("monitoringSchedules")
-          .where("active", "==", true)
-          .where("nextRunAt", "<=", now)
-          .limit(50)
-          .get()
-      ).docs.map((d: any) => ({ id: d.id, path: d.ref.path, ...d.data() })),
+    return await step.run("process-due-schedules", async () =>
+      processDueMonitoringSchedules(db),
     );
-    let queued = 0;
-    for (const schedule of schedules)
-      await step.run(`schedule-${schedule.id}`, async () => {
-        const organizationId = String(schedule.path).split("/")[1];
-        for (const documentId of schedule.documentIds || []) {
-          const auditId = await queueAudit(
-            db,
-            organizationId,
-            String(documentId),
-            String(schedule.createdBy),
-            `Scheduled ${String(schedule.frequency).toLowerCase()} monitoring`,
-            {
-              id: String(schedule.id),
-              frequency: schedule.frequency as MonitorFrequency,
-              runAt: now,
-              sessionId: `schedule-${String(schedule.id)}-${now.getTime()}-${String(documentId)}`,
-            },
-          );
-          if (auditId) queued++;
-        }
-        const frequency = schedule.frequency as MonitorFrequency;
-        await db.doc(schedule.path).update({
-          lastRunAt: now,
-          nextRunAt: nextRunAt(frequency, now),
-          updatedAt: new Date(),
-        });
-      });
-    return { schedules: schedules.length, queued };
   },
 );
 

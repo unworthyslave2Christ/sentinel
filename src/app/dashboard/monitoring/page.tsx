@@ -2,11 +2,13 @@ import AutoRefresh from "@/components/auto-refresh";
 import { getCurrentSession } from "@/server/session";
 import { ensureOrganization } from "@/server/organization";
 import { getAdminDb } from "@/server/firebase/admin";
+import { processDueMonitoringSchedules } from "@/server/data/monitoring";
 import MonitoringClient from "@/components/monitoring-client";
 
 export default async function Monitoring() {
   const s = await getCurrentSession(); if (!s?.user?.id) return null;
   const org = await ensureOrganization(s.user.id, s.user.email); const db = getAdminDb();
+  await processDueMonitoringSchedules(db);
   const [docs, schedules, alerts] = await Promise.all([
     db.collection(`organizations/${org}/documents`).orderBy("createdAt", "desc").limit(50).get(),
     db.collection(`organizations/${org}/monitoringSchedules`).orderBy("createdAt", "desc").get(),
