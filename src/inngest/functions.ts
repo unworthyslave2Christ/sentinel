@@ -154,15 +154,18 @@ async function tracked<T>(
     scheduleId?: string;
     scheduleSessionId?: string;
     scheduleSessionNumber?: number;
-    scheduleRunAt?: string;
+    scheduleRunAt?: string | Date;
     trigger?: string;
   },
   fn: (runId: string) => Promise<T>,
 ) {
+  const { scheduleRunAt, ...analysisParams } = params;
   const runId = await createAnalysisRun({
-    ...params,
+    ...analysisParams,
     model: modelName(),
-    ...(params.scheduleRunAt ? { scheduleRunAt: new Date(params.scheduleRunAt) } : {}),
+    ...(scheduleRunAt
+      ? { scheduleRunAt: scheduleRunAt instanceof Date ? scheduleRunAt : new Date(scheduleRunAt) }
+      : {}),
   });
   try {
     const output = await fn(runId);
